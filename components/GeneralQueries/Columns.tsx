@@ -1,38 +1,26 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { GeneralQueriesProps } from "../GeneralQueries";
-import { Button } from "../ui/button";
+import { GeneralQueriesProps } from "./index";
 import { cn } from "@/lib/utils";
+import Text from "@/icons/Text";
+import VideoCall from "@/icons/VideoCall";
+import Huddle from "@/icons/Huddle";
+import { QueryActions } from "../QueryActions";
+import { useRouter } from "next/navigation";
 
-const QueryModeBadge = ({ mode }: { mode: string }) => {
+export const QueryModeBadge = ({ mode }: { mode: string }) => {
   const badgeStyles =
     {
-      Text: "bg-[#F2FAFF] text-[#007DC7]",
+      Text: "bg-[#F0F9FF] text-[#007DC7] border-[#BAE6FD]",
+      "Video Call": "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]",
       Huddle: "bg-[#FEF3C7] text-[#B45309]",
-      "Video Call": "bg-[#FEE2E2] text-[#991B1B]",
-    }[mode] || "bg-[#E5F5FF] text-[#009CF9]";
+    }[mode] || "";
 
   const icons = {
-    Text: (
-      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path fillRule="evenodd" clipRule="evenodd" d="M12.1167 14.8638H4.1167C3.01203 14.8638 2.1167 13.9684 2.1167 12.8638V4.86377C2.1167 3.7591 3.01203 2.86377 4.1167 2.86377H12.1167C13.2214 2.86377 14.1167 3.7591 14.1167 4.86377V12.8638C14.1167 13.9684 13.2214 14.8638 12.1167 14.8638Z" stroke="#007DC7" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M6.94995 11.1971H9.28328" stroke="#007DC7" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M8.11678 6.53052V11.1972" stroke="#007DC7" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M10.4501 7.58652V6.78985C10.4501 6.64652 10.3341 6.53052 10.1908 6.53052H6.04278C5.89945 6.53052 5.78345 6.64652 5.78345 6.78985V7.58718" stroke="#007DC7" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-    Huddle: (
-      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path fillRule="evenodd" clipRule="evenodd" d="M7.35397 9.62651C6.57397 8.84651 5.98597 7.97318 5.5953 7.08718C5.51263 6.89985 5.5613 6.68051 5.70597 6.53585L6.25197 5.99051C6.6993 5.54318 6.6993 4.91051 6.30863 4.51985L5.52597 3.73718C5.0053 3.21651 4.1613 3.21651 3.64063 3.73718L3.20597 4.17185C2.71197 4.66585 2.50597 5.37851 2.6393 6.08518C2.96863 7.82718 3.98063 9.73451 5.6133 11.3672C7.24597 12.9998 9.1533 14.0118 10.8953 14.3412C11.602 14.4745 12.3146 14.2685 12.8086 13.7745L13.2426 13.3405C13.7633 12.8198 13.7633 11.9758 13.2426 11.4552L12.4606 10.6732C12.07 10.2825 11.4366 10.2825 11.0466 10.6732L10.4446 11.2758C10.3 11.4205 10.0806 11.4692 9.8933 11.3865C9.0073 10.9952 8.13397 10.4065 7.35397 9.62651Z" stroke="#B45309" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-    "Video Call": (
-      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10.7834 7.72552L13.1003 6.29742C13.3059 6.17062 13.5641 6.16503 13.7751 6.28281C13.9861 6.40059 14.1168 6.6233 14.1168 6.86492V11.5295C14.1168 11.7711 13.9861 11.9938 13.7751 12.1116C13.5641 12.2293 13.306 12.2238 13.1003 12.097L10.7834 10.6688" stroke="#991B1B" strokeLinecap="round" strokeLinejoin="round"/>
-        <rect x="2.1167" y="4.86377" width="8.66667" height="8.66667" rx="2" stroke="#991B1B" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    )
+    Text: <Text />,
+    "Video Call": <VideoCall />,
+    Huddle: <Huddle />,
   };
 
   return (
@@ -52,8 +40,9 @@ const StatusBadge = ({ status }: { status: string }) => {
   const badgeStyles =
     {
       "In Progress": "bg-[#ECFDF5] text-[#10B981] border-[#A7F3D0]",
-      "Awaiting Response": "bg-[#FFFBEB] text-[#F59E0B] border-[#FDE68A]",
+      "Pending Reply": "bg-[#FFFBEB] text-[#F59E0B] border-[#FDE68A]",
       Resolved: "bg-[#E5FFE9] text-[#00B724] border-[#A3E635]",
+      Transferred: "bg-[#E5F5FF] text-[#009CF9] border-[#BAE6FD]",
     }[status] || "bg-[#E5F5FF] text-[#009CF9]";
 
   return (
@@ -71,64 +60,192 @@ const StatusBadge = ({ status }: { status: string }) => {
 const DeviceBadge = ({ device }: { device: string }) => {
   const getDeviceType = (device: string): string => {
     const lowerDevice = device.toLowerCase();
-    if (lowerDevice.includes('macbook') || lowerDevice.includes('iphone') || lowerDevice.includes('ipad') || lowerDevice.includes('mac')) {
-      return 'Apple';
+    if (
+      lowerDevice.includes("macbook") ||
+      lowerDevice.includes("iphone") ||
+      lowerDevice.includes("ipad") ||
+      lowerDevice.includes("mac")
+    ) {
+      return "Apple";
     }
-    if (lowerDevice.includes('windows') || lowerDevice.includes('surface')) {
-      return 'Windows';
+    if (lowerDevice.includes("windows") || lowerDevice.includes("surface")) {
+      return "Windows";
     }
-    if (lowerDevice.includes('linux') || lowerDevice.includes('ubuntu') || lowerDevice.includes('fedora')) {
-      return 'Linux';
+    if (
+      lowerDevice.includes("linux") ||
+      lowerDevice.includes("ubuntu") ||
+      lowerDevice.includes("fedora")
+    ) {
+      return "Linux";
     }
-    if (lowerDevice.includes('android') || lowerDevice.includes('samsung') || lowerDevice.includes('pixel')) {
-      return 'Android';
+    if (
+      lowerDevice.includes("android") ||
+      lowerDevice.includes("samsung") ||
+      lowerDevice.includes("pixel")
+    ) {
+      return "Android";
     }
-    return 'Unknown';
+    return "Unknown";
   };
 
   const icons = {
     Apple: (
-      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12.7834 13.8638C12.2834 14.8638 11.7834 15.8638 10.7834 15.8638C9.78339 15.8638 9.28339 15.1971 8.11672 15.1971C6.95006 15.1971 6.45006 15.8638 5.45006 15.8638C4.45006 15.8638 3.95006 14.8638 3.45006 13.8638C2.45006 11.8638 2.28339 9.19711 3.28339 7.86377C3.95006 6.86377 4.95006 6.36377 6.11672 6.36377C7.28339 6.36377 7.95006 7.03044 8.95006 7.03044C9.95006 7.03044 10.4501 6.36377 11.7834 6.36377C12.7834 6.36377 13.7834 6.86377 14.4501 7.69711C11.7834 9.03044 12.2834 12.8638 14.7834 13.5305C14.4501 14.0305 13.7834 14.8638 12.7834 13.8638Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M10.7834 2.86377C11.1167 3.53044 11.2834 4.19711 11.1167 5.03044C10.2834 5.03044 9.61672 4.53044 9.11672 3.86377C8.61672 3.19711 8.45006 2.53044 8.61672 1.86377C9.45006 1.86377 10.2834 2.19711 10.7834 2.86377Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 25 25"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M19.7364 9.68309C19.6414 9.74165 17.552 10.9581 17.5758 13.4889C17.602 16.5159 20.2293 17.5239 20.2595 17.5353C20.236 17.6074 19.8395 18.9711 18.8746 20.3794C18.0407 21.5994 17.177 22.8126 15.8137 22.8379C14.4743 22.8624 14.0426 22.0432 12.5125 22.0432C10.9815 22.0432 10.5022 22.8126 9.23565 22.8624C7.91976 22.9122 6.91793 21.5449 6.07793 20.3316C4.36073 17.8484 3.0478 13.314 4.81076 10.254C5.68599 8.73423 7.25037 7.77143 8.94775 7.74656C10.2404 7.72213 11.4595 8.61557 12.2502 8.61557C13.0297 8.61557 14.4265 7.57406 16.0731 7.69587C16.7184 7.7437 18.5504 7.93631 19.7364 9.68309ZM15.0571 6.05666C15.7564 5.2115 16.2269 4.03448 16.0974 2.86377C15.0909 2.90368 13.8736 3.53419 13.1517 4.37881C12.5052 5.12701 11.9375 6.32534 12.0916 7.47215C13.2135 7.55884 14.3584 6.90234 15.0571 6.05666Z"
+          fill="#1D1D1F"
+        />
       </svg>
     ),
     Linux: (
-      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M13.7834 11.8638C13.4501 12.1971 12.9501 12.3638 12.4501 12.1971L10.7834 11.5305C10.2834 11.3638 9.78339 11.5305 9.45006 11.8638L8.78339 12.5305L8.11672 11.8638C7.78339 11.5305 7.28339 11.3638 6.78339 11.5305L5.11672 12.1971C4.61672 12.3638 4.11672 12.1971 3.78339 11.8638" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M6.11672 8.53044C5.78339 8.53044 5.45006 8.36377 5.28339 8.03044L4.61672 6.86377C4.45006 6.53044 4.45006 6.19711 4.61672 5.86377L5.95006 3.19711C6.11672 2.86377 6.45006 2.69711 6.78339 2.69711H10.7834C11.1167 2.69711 11.4501 2.86377 11.6167 3.19711L12.9501 5.86377C13.1167 6.19711 13.1167 6.53044 12.9501 6.86377L12.2834 8.03044C12.1167 8.36377 11.7834 8.53044 11.4501 8.53044" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M5.28339 8.03044L3.78339 11.8638" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M12.2834 8.03044L13.7834 11.8638" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M8.78339 8.53044V14.1971" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <circle cx="7.28339" cy="4.86377" r="0.5" fill="currentColor"/>
-        <circle cx="10.2834" cy="4.86377" r="0.5" fill="currentColor"/>
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 17 17"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M13.7834 11.8638C13.4501 12.1971 12.9501 12.3638 12.4501 12.1971L10.7834 11.5305C10.2834 11.3638 9.78339 11.5305 9.45006 11.8638L8.78339 12.5305L8.11672 11.8638C7.78339 11.5305 7.28339 11.3638 6.78339 11.5305L5.11672 12.1971C4.61672 12.3638 4.11672 12.1971 3.78339 11.8638"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M6.11672 8.53044C5.78339 8.53044 5.45006 8.36377 5.28339 8.03044L4.61672 6.86377C4.45006 6.53044 4.45006 6.19711 4.61672 5.86377L5.95006 3.19711C6.11672 2.86377 6.45006 2.69711 6.78339 2.69711H10.7834C11.1167 2.69711 11.4501 2.86377 11.6167 3.19711L12.9501 5.86377C13.1167 6.19711 13.1167 6.53044 12.9501 6.86377L12.2834 8.03044C12.1167 8.36377 11.7834 8.53044 11.4501 8.53044"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M5.28339 8.03044L3.78339 11.8638"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12.2834 8.03044L13.7834 11.8638"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M8.78339 8.53044V14.1971"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="7.28339" cy="4.86377" r="0.5" fill="currentColor" />
+        <circle cx="10.2834" cy="4.86377" r="0.5" fill="currentColor" />
       </svg>
     ),
     Windows: (
-      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2.78339 4.86377L7.78339 4.19711V8.19711H2.78339V4.86377Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M9.78339 3.86377L14.7834 3.19711V8.19711H9.78339V3.86377Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M9.78339 10.1971H14.7834V15.1971L9.78339 14.5305V10.1971Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M2.78339 10.1971H7.78339V13.8638L2.78339 13.1971V10.1971Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 17 17"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M2.78339 4.86377L7.78339 4.19711V8.19711H2.78339V4.86377Z"
+          stroke="#00ADEF"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M9.78339 3.86377L14.7834 3.19711V8.19711H9.78339V3.86377Z"
+          stroke="#00ADEF"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M9.78339 10.1971H14.7834V15.1971L9.78339 14.5305V10.1971Z"
+          stroke="#00ADEF"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M2.78339 10.1971H7.78339V13.8638L2.78339 13.1971V10.1971Z"
+          stroke="#00ADEF"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     ),
     Android: (
-      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3.78339 6.86377V11.1971" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M13.7834 6.86377V11.1971" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M5.78339 13.1971V14.1971C5.78339 14.7494 6.23111 15.1971 6.78339 15.1971H7.78339" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M11.7834 13.1971V14.1971C11.7834 14.7494 11.3357 15.1971 10.7834 15.1971H9.78339" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M4.78339 6.86377H12.7834C13.3357 6.86377 13.7834 7.31148 13.7834 7.86377V11.1971C13.7834 11.7494 13.3357 12.1971 12.7834 12.1971H4.78339C4.23111 12.1971 3.78339 11.7494 3.78339 11.1971V7.86377C3.78339 7.31148 4.23111 6.86377 4.78339 6.86377Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M8.78339 2.86377L10.2834 4.86377H7.28339L8.78339 2.86377Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg
+        width="25"
+        height="25"
+        viewBox="0 0 25 25"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <g clipPath="url(#clip0_9420_4551)">
+          <path
+            d="M17.6896 9.4668H7.54388C7.3182 9.4668 7.13525 9.64974 7.13525 9.87543V18.3835C7.13525 18.6091 7.3182 18.7921 7.54388 18.7921H9.35263V21.6593C9.35263 22.3246 9.89192 22.8639 10.5572 22.8639C11.2225 22.8639 11.7618 22.3246 11.7618 21.6593V18.7921H13.4466V21.6593C13.4466 22.3246 13.9859 22.8639 14.6512 22.8639C15.3165 22.8639 15.8558 22.3246 15.8558 21.6593V18.7921H17.6897C17.9154 18.7921 18.0983 18.6091 18.0983 18.3835V9.87543C18.0983 9.64974 17.9153 9.4668 17.6896 9.4668Z"
+            fill="#AAC148"
+          />
+          <path
+            d="M5.41748 9.4646C4.75223 9.4646 4.21289 10.0039 4.21289 10.6692V15.5618C4.21289 16.227 4.75218 16.7663 5.41748 16.7663C6.08273 16.7663 6.62207 16.2271 6.62207 15.5618V10.6692C6.62202 10.0039 6.08273 9.4646 5.41748 9.4646Z"
+            fill="#AAC148"
+          />
+          <path
+            d="M19.8159 9.4646C19.1507 9.4646 18.6113 10.0039 18.6113 10.6692V15.5618C18.6113 16.227 19.1506 16.7663 19.8159 16.7663C20.4812 16.7663 21.0205 16.2271 21.0205 15.5618V10.6692C21.0205 10.0039 20.4812 9.4646 19.8159 9.4646Z"
+            fill="#AAC148"
+          />
+          <path
+            d="M7.62585 8.86997H17.5834C17.8432 8.86997 18.0369 8.63068 17.9836 8.37643C17.6542 6.80659 16.6547 5.48364 15.2985 4.71939L16.1498 3.18348C16.2074 3.0795 16.1698 2.94845 16.0658 2.89084C15.9616 2.83309 15.8307 2.8708 15.7731 2.97479L14.9154 4.52226C14.213 4.19627 13.4301 4.0142 12.6046 4.0142C11.7791 4.0142 10.9963 4.19627 10.2938 4.52226L9.4361 2.97474C9.37844 2.8707 9.2474 2.83319 9.14346 2.8908C9.03947 2.9484 9.00191 3.07945 9.05952 3.18343L9.91076 4.71934C8.55455 5.48364 7.55507 6.80654 7.22569 8.37643C7.1723 8.63068 7.36603 8.86997 7.62585 8.86997ZM15.5759 6.581C15.5759 6.8367 15.3686 7.04404 15.1128 7.04404C14.8571 7.04404 14.6498 6.83675 14.6498 6.581C14.6498 6.3253 14.8571 6.11796 15.1128 6.11796C15.3686 6.11796 15.5759 6.3253 15.5759 6.581ZM10.0964 6.11796C10.3521 6.11796 10.5594 6.32525 10.5594 6.581C10.5594 6.8367 10.3521 7.04404 10.0964 7.04404C9.84066 7.04404 9.63332 6.83675 9.63332 6.581C9.63332 6.3253 9.84061 6.11796 10.0964 6.11796Z"
+            fill="#AAC148"
+          />
+        </g>
+        <defs>
+          <clipPath id="clip0_9420_4551">
+            <rect
+              width="20"
+              height="20"
+              fill="white"
+              transform="translate(2.6167 2.86377)"
+            />
+          </clipPath>
+        </defs>
       </svg>
     ),
     Unknown: (
-      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8.78339 15.8638C12.6494 15.8638 15.7834 12.7298 15.7834 8.86377C15.7834 4.99777 12.6494 1.86377 8.78339 1.86377C4.91739 1.86377 1.78339 4.99777 1.78339 8.86377C1.78339 12.7298 4.91739 15.8638 8.78339 15.8638Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M8.78339 11.8638V8.86377" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M8.78339 5.86377H8.79006" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 17 17"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M8.78339 15.8638C12.6494 15.8638 15.7834 12.7298 15.7834 8.86377C15.7834 4.99777 12.6494 1.86377 8.78339 1.86377C4.91739 1.86377 1.78339 4.99777 1.78339 8.86377C1.78339 12.7298 4.91739 15.8638 8.78339 15.8638Z"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M8.78339 11.8638V8.86377"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M8.78339 5.86377H8.79006"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
-    )
+    ),
   };
 
   const deviceType = getDeviceType(device);
@@ -141,23 +258,24 @@ const DeviceBadge = ({ device }: { device: string }) => {
   );
 };
 
-const ActionCell = () => {
+const ActionCell = ({ query }: { query: GeneralQueriesProps }) => {
+  const router = useRouter();
+
+  const handleActionComplete = () => {
+    router.refresh();
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
-    <div className="flex gap-x-2">
-      <Button
-        variant="outline"
-        size="sm"
-        className="text-[#4D5B6B] border-[#C6CED6] border-[1px] font-semibold rounded-[8px] text-[13px]"
-      >
-        Transfer
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        className="text-[#4D5B6B] border-[#C6CED6] border-[1px] font-semibold rounded-[8px] text-[13px]"
-      >
-        Resolve
-      </Button>
+    <div onClick={handleClick}>
+      <QueryActions
+        query={query}
+        onActionComplete={handleActionComplete}
+        showCommunicationButtons={false}
+      />
     </div>
   );
 };
@@ -229,6 +347,7 @@ export const columns: ColumnDef<GeneralQueriesProps>[] = [
   {
     accessorKey: "actions",
     header: "Actions",
-    cell: () => <ActionCell />,
+    cell: ({ row }) => <ActionCell query={row.original} />,
+    minSize: 300,
   },
 ];

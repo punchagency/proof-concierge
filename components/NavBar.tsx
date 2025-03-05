@@ -11,6 +11,7 @@ export default function NavBar() {
     { label: "Menu 1", path: "/menu1" },
     { label: "Menu 2", path: "/menu2" },
     { label: "Donor Queries", path: "/donor-queries" },
+    { label: "Test Audio Call", path: "/test-audio-call" },
   ];
 
   return (

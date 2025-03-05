@@ -1,149 +1,90 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
 import { columns } from "./GeneralQueries/Columns";
 import { DataTable } from "./GeneralQueries/DataTable";
+import { fetchGeneralQueries, GeneralQuery, FilterParams } from "@/lib/api/donor-queries";
 
-export type GeneralQueriesProps = {
-  sid: string;
-  donor: string;
-  donorId: string;
-  test: string;
-  stage: string;
-  queryMode: "Text" | "Huddle" | "Video Call";
-  device: string;
-  dateNdTime: string;
-  status: "In Progress" | "Awaiting Response";
-};
+export type GeneralQueriesProps = GeneralQuery;
 
-export async function getData(): Promise<GeneralQueriesProps[]> {
-  return [
-    {
-      sid: "1",
-      donor: "John Doe",
-      donorId: "12345",
-      test: "Blood Test",
-      stage: "Initial",
-      queryMode: "Text",
-      device: "Windows 11 Pro",
-      dateNdTime: "2024-03-15 10:00:00",
-      status: "In Progress",
-    },
-    {
-      sid: "2",
-      donor: "Jane Doe",
-      donorId: "12346",
-      test: "Blood Test",
-      stage: "Initial",
-      queryMode: "Huddle",
-      device: "Macbook M1 Pro",
-      dateNdTime: "2024-03-15 11:30:00",
-      status: "Awaiting Response",
-    },
-    {
-      sid: "3",
-      donor: "John Smith",
-      donorId: "12347",
-      test: "Blood Test",
-      stage: "Initial",
-      queryMode: "Video Call",
-      device: "iPhone 16 Pro Max",
-      dateNdTime: "2024-03-15 12:45:00",
-      status: "Awaiting Response",
-    },
-    {
-      sid: "4",
-      donor: "Sarah Wilson",
-      donorId: "12348",
-      test: "Blood Test",
-      stage: "Follow-up",
-      queryMode: "Text",
-      device: "Samsung Galaxy S24 Ultra",
-      dateNdTime: "2024-03-15 13:15:00",
-      status: "In Progress",
-    },
-    {
-      sid: "5",
-      donor: "Michael Brown",
-      donorId: "12349",
-      test: "Blood Test",
-      stage: "Initial",
-      queryMode: "Huddle",
-      device: "MacBook Air M2",
-      dateNdTime: "2024-03-15 14:20:00",
-      status: "Awaiting Response",
-    },
-    {
-      sid: "6",
-      donor: "Emily Davis",
-      donorId: "12350",
-      test: "Blood Test",
-      stage: "Follow-up",
-      queryMode: "Video Call",
-      device: "iPad Pro M2",
-      dateNdTime: "2024-03-15 15:00:00",
-      status: "In Progress",
-    },
-    {
-      sid: "7",
-      donor: "David Miller",
-      donorId: "12351",
-      test: "Blood Test",
-      stage: "Initial",
-      queryMode: "Text",
-      device: "Google Pixel 8 Pro",
-      dateNdTime: "2024-03-15 15:45:00",
-      status: "Awaiting Response",
-    },
-    {
-      sid: "8",
-      donor: "Lisa Anderson",
-      donorId: "12352",
-      test: "Blood Test",
-      stage: "Follow-up",
-      queryMode: "Huddle",
-      device: "Mac Studio M2 Ultra",
-      dateNdTime: "2024-03-15 16:30:00",
-      status: "In Progress",
-    },
-    {
-      sid: "9",
-      donor: "James Wilson",
-      donorId: "12353",
-      test: "Blood Test",
-      stage: "Initial",
-      queryMode: "Video Call",
-      device: "Surface Laptop 5",
-      dateNdTime: "2024-03-15 17:15:00",
-      status: "Awaiting Response",
-    },
-    {
-      sid: "10",
-      donor: "Emma Thompson",
-      donorId: "12354",
-      test: "Blood Test",
-      stage: "Follow-up",
-      queryMode: "Text",
-      device: "iPhone 15 Pro",
-      dateNdTime: "2024-03-15 18:00:00",
-      status: "In Progress",
-    },
-    {
-      sid: "11",
-      donor: "Robert Clark",
-      donorId: "12355",
-      test: "Blood Test",
-      stage: "Initial",
-      queryMode: "Huddle",
-      device: "Ubuntu Linux 22.04",
-      dateNdTime: "2024-03-15 18:45:00",
-      status: "Awaiting Response",
-    },
-  ];
-}
+export default function GeneralQueries() {
+  const [data, setData] = useState<GeneralQueriesProps[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isFiltered, setIsFiltered] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState<FilterParams | undefined>(undefined);
 
-export default async function GeneralQueries() {
-  const data = await getData();
+  const fetchData = async (filters?: FilterParams) => {
+    setLoading(true);
+    try {
+      const queries = await fetchGeneralQueries(filters);
+      setData(queries || []);
+      setIsFiltered(!!filters && Object.values(filters).some(value => !!value));
+      setCurrentFilters(filters);
+    } catch (error) {
+      console.error("Error fetching general queries:", error);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Function to handle filtered data from FilterDropdown
+  const handleFilteredData = useCallback((filteredData: GeneralQueriesProps[]) => {
+    console.log("GeneralQueries received filtered data:", filteredData?.length);
+    setData(filteredData || []);
+    // Check if any filters are applied
+    const hasActiveFilters = filteredData.length !== data.length || 
+      (currentFilters && Object.values(currentFilters).some(value => !!value));
+    console.log("Setting isFiltered to:", hasActiveFilters);
+    setIsFiltered(hasActiveFilters || false);
+  }, [data.length, currentFilters]);
+
+  // Register the handler function on the window object immediately when component mounts
+  // and ensure it's always up to date with the latest state
+  useEffect(() => {
+    console.log("Setting handleFilteredGeneralQueries on window");
+    
+    // Define the handler function that will be called by FilterDropdown
+    (window as any).handleFilteredGeneralQueries = (filteredData: GeneralQueriesProps[]) => {
+      console.log("Window handler called with filtered data:", filteredData?.length);
+      console.log("Current data length before update:", data.length);
+      console.log("Sample filtered data:", filteredData?.slice(0, 2));
+      handleFilteredData(filteredData);
+    };
+
+    return () => {
+      // Clean up
+      console.log("Cleaning up handleFilteredGeneralQueries");
+      delete (window as any).handleFilteredGeneralQueries;
+    };
+  }, [data, currentFilters, handleFilteredData]); // Include all dependencies
+
   return (
-    <div className="mx-auto w-full">
-      <DataTable columns={columns} data={data} />
+    <div className="h-full w-full">
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      ) : (
+        <>
+          {isFiltered && (
+            <div className="p-2 bg-blue-50 text-blue-700 text-sm flex justify-between items-center">
+              <span>Showing filtered results</span>
+              <button 
+                onClick={() => fetchData()}
+                className="text-blue-700 hover:text-blue-900 underline text-xs"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+          <DataTable columns={columns} data={data} />
+        </>
+      )}
     </div>
   );
 }

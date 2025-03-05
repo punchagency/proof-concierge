@@ -6,41 +6,71 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
+import { useDockableModal } from "../providers/dockable-modal-provider";
+import { DockableQueryModal } from "./DockableQueryModal";
+import { GeneralQueriesProps } from "../GeneralQueries";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  onRowClick?: (rowData: TData) => void;
+  disableRowClick?: boolean;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  onRowClick,
+  disableRowClick = false,
 }: DataTableProps<TData, TValue>) {
+  const { openModal } = useDockableModal();
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
 
+  const handleRowClick = (rowData: any) => {
+    if (disableRowClick) return;
+
+    if (onRowClick) {
+      onRowClick(rowData);
+    } else {
+      // Check if the query is already accepted (status is 'In Progress')
+      // The status in the API is defined as 'In Progress' with a space
+      const isAlreadyAccepted = rowData.status === "In Progress";
+
+      openModal(
+        `query-${rowData.sid}`,
+        <DockableQueryModal
+          data={rowData as GeneralQueriesProps}
+          initiallyAccepted={isAlreadyAccepted}
+        />,
+        {
+          name: rowData.donor,
+          image: `/avatars/${rowData.donorId}.jpg`,
+          status: "Available",
+        }
+      );
+    }
+  };
+
   return (
-    <div className="border w-full">
-      <Table>
-        <TableHeader className="bg-[#009CF9]">
+    <div className="w-full h-full border overflow-y-auto max-h-[calc(100vh-250px)]">
+      <table className="w-full caption-bottom text-sm table-auto">
+        <thead className="bg-[#009CF9] sticky top-0 z-10">
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
+            <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
+                const isActionsColumn = header.column.id === "actions";
                 return (
-                  <TableHead
+                  <th
                     key={header.id}
-                    className="text-white font-semibold text-[16px]"
+                    className="text-white font-semibold text-[16px] h-10 px-2 text-left align-middle whitespace-nowrap overflow-hidden text-ellipsis"
+                    style={{
+                      width: isActionsColumn ? "300px" : "auto",
+                      minWidth: isActionsColumn ? "300px" : "auto",
+                    }}
                   >
                     {header.isPlaceholder
                       ? null
@@ -48,38 +78,57 @@ export function DataTable<TData, TValue>({
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                  </TableHead>
+                  </th>
                 );
               })}
-            </TableRow>
+            </tr>
           ))}
-        </TableHeader>
-        <TableBody>
+        </thead>
+        <tbody className="divide-y">
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
-              <TableRow
+              <tr
                 key={row.id}
+                className={`hover:bg-muted/50 data-[state=selected]:bg-muted transition-colors ${
+                  !disableRowClick ? "cursor-pointer" : ""
+                }`}
                 data-state={row.getIsSelected() && "selected"}
+                onClick={() => handleRowClick(row.original)}
               >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className="text-[14px] font-semibold text-[#2E3740]"
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
+                {row.getVisibleCells().map((cell) => {
+                  const isActionsColumn = cell.column.id === "actions";
+                  return (
+                    <td
+                      key={cell.id}
+                      className="text-[14px] font-semibold text-[#2E3740] p-2 align-middle"
+                      style={{
+                        whiteSpace: isActionsColumn ? "normal" : "nowrap",
+                        overflow: isActionsColumn ? "visible" : "hidden",
+                        textOverflow: isActionsColumn ? "clip" : "ellipsis",
+                        width: isActionsColumn ? "300px" : "auto",
+                        minWidth: isActionsColumn ? "300px" : "auto",
+                      }}
+                    >
+                      <div className={isActionsColumn ? "" : "truncate"}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
             ))
           ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
+            <tr>
+              <td colSpan={columns.length} className="h-24 text-center">
                 No results.
-              </TableCell>
-            </TableRow>
+              </td>
+            </tr>
           )}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
     </div>
   );
 }
