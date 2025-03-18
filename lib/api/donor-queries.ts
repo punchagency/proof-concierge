@@ -68,38 +68,39 @@ export async function fetchGeneralQueries(filters?: FilterParams): Promise<Gener
     // Build query string from filters
     const queryParams = new URLSearchParams();
     if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-          queryParams.append(key, value);
-        }
-      });
+      // Only include the specific parameters that the backend accepts
+      if (filters.test) queryParams.append('test', filters.test);
+      if (filters.stage) queryParams.append('stage', filters.stage);
+      if (filters.queryMode) queryParams.append('queryMode', filters.queryMode);
+      if (filters.device) queryParams.append('device', filters.device);
+      if (filters.date) queryParams.append('date', filters.date);
+      // Skip status parameter as it's not in the backend API documentation
     }
     const queryString = queryParams.toString();
     
-    // Fetch in-progress queries
-    const inProgressUrl = `${API_BASE_URL}/donor-queries/in-progress${queryString ? `?${queryString}` : ''}`;
-    const inProgressResponse = await fetchWithAuth(inProgressUrl);
-    const inProgressData: ApiResponse<DonorQuery[]> = await inProgressResponse.json();
+    console.log(`Making request to: ${API_BASE_URL}/donor-queries/general${queryString ? `?${queryString}` : ''}`);
+    // Fetch general queries using the combined endpoint
+    const url = `${API_BASE_URL}/donor-queries/general${queryString ? `?${queryString}` : ''}`;
+    const response = await fetchWithAuth(url);
     
-    // Fetch pending-reply queries
-    const pendingUrl = `${API_BASE_URL}/donor-queries/pending-reply${queryString ? `?${queryString}` : ''}`;
-    const pendingResponse = await fetchWithAuth(pendingUrl);
-    const pendingReplyData: ApiResponse<DonorQuery[]> = await pendingResponse.json();
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Error response from API (${response.status}):`, errorText);
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
     
-    // Ensure data properties are arrays before spreading
-    const inProgressArray = Array.isArray(inProgressData.data) ? inProgressData.data : [];
-    const pendingReplyArray = Array.isArray(pendingReplyData.data) ? pendingReplyData.data : [];
+    const data: ApiResponse<DonorQuery[]> = await response.json();
     
-    // Combine and format the data
-    const combinedData = [
-      ...inProgressArray,
-      ...pendingReplyArray
-    ].map(query => ({
+    // Ensure data property is an array before mapping
+    const queriesArray = Array.isArray(data.data) ? data.data : [];
+    
+    // Format the data
+    const formattedData = queriesArray.map(query => ({
       ...query,
       dateNdTime: formatDate(query.createdAt)
     }));
     
-    return combinedData;
+    return formattedData;
   } catch (error) {
     console.error('Error fetching general queries:', error);
     return [];

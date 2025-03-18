@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -6,13 +6,7 @@ import Link from "next/link";
 export default function NavBar() {
   const pathname = usePathname();
 
-  const navItems = [
-    { label: "Home", path: "/" },
-    { label: "Menu 1", path: "/menu1" },
-    { label: "Menu 2", path: "/menu2" },
-    { label: "Donor Queries", path: "/donor-queries" },
-    { label: "Test Audio Call", path: "/test-audio-call" },
-  ];
+  const navItems = [{ label: "Donor Queries", path: "/donor-queries" }];
 
   return (
     <div className="bg-[#F2FAFF] h-[44px] flex flex-row gap-x-[24px]">

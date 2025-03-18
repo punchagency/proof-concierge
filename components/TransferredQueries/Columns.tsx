@@ -318,13 +318,6 @@ const ActionCell = ({ row }: { row: any }) => {
 
 export const columns: ColumnDef<TransferredQueriesProps>[] = [
   {
-    accessorKey: "sid",
-    header: "SID",
-    cell: ({ row }) => {
-      return <div>SID_{row.getValue("sid")}</div>;
-    },
-  },
-  {
     accessorKey: "donor",
     header: "Donor",
   },
@@ -339,13 +332,6 @@ export const columns: ColumnDef<TransferredQueriesProps>[] = [
   {
     accessorKey: "stage",
     header: "Stage",
-  },
-  {
-    accessorKey: "queryMode",
-    header: "Query Mode",
-    cell: ({ row }) => {
-      return <QueryModeBadge mode={row.getValue("queryMode")} />;
-    },
   },
   {
     accessorKey: "device",

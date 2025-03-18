@@ -35,6 +35,22 @@ export interface ChatMessage {
     status: string;
   };
   fcmToken?: string;
+  
+  // New fields for call-related messages
+  messageType?: "CHAT" | "CALL_STARTED" | "CALL_ENDED" | "SYSTEM";
+  callMode?: "VIDEO" | "AUDIO";
+  roomName?: string;
+  callSessionId?: number;
+  callRequestId?: number;
+  callSession?: {
+    id: number;
+    mode: "VIDEO" | "AUDIO";
+    status: "CREATED" | "STARTED" | "ENDED";
+    roomName: string;
+    userToken: string;
+    startedAt: string | null;
+    endedAt: string | null;
+  };
 }
 
 export interface CreateChatMessageData {
@@ -198,6 +214,95 @@ export async function getChatMessages(
     return await response.json();
   } catch (error) {
     console.error('Get messages error:', error);
+    throw error;
+  }
+}
+
+// Get all messages for a query (including chat and call-related messages)
+export async function getQueryMessages(
+  queryId: number,
+  limit: number = 50,
+  offset: number = 0
+): Promise<ChatMessage[]> {
+  try {
+    // Build query params
+    const queryParams = new URLSearchParams();
+    queryParams.append("limit", limit.toString());
+    queryParams.append("offset", offset.toString());
+    
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/messages/query/${queryId}?${queryParams.toString()}`
+    );
+
+    if (!response.ok) {
+      let errorMessage = `Failed to get messages: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData && errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (parseError) {
+        try {
+          const textResponse = await response.text();
+          errorMessage = textResponse || errorMessage;
+        } catch (textError) {
+          console.error('Could not read response text:', textError);
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return result.data || [];
+  } catch (error) {
+    console.error('Get query messages error:', error);
+    throw error;
+  }
+}
+
+// Send a message using the admin endpoint
+export async function sendAdminMessage(
+  queryId: number,
+  content: string,
+  messageType: string = "CHAT"
+): Promise<ChatMessage> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/messages/admin/${queryId}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content,
+          messageType
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = `Failed to send admin message: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData && errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (parseError) {
+        try {
+          const textResponse = await response.text();
+          errorMessage = textResponse || errorMessage;
+        } catch (textError) {
+          console.error('Could not read response text:', textError);
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return result.data || {};
+  } catch (error) {
+    console.error('Send admin message error:', error);
     throw error;
   }
 } 

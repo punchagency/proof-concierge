@@ -284,4 +284,54 @@ export async function cancelCallRequest(requestId: string) {
     console.error('Error cancelling call request:', error);
     throw error;
   }
+}
+
+/**
+ * Accept a call request by ID
+ * @param queryId The ID of the query
+ * @param requestId The ID of the call request to accept
+ * @returns The response data with call session details
+ */
+export async function acceptCallRequestById(
+  queryId: number,
+  requestId: number
+) {
+  try {
+    console.log(`Accepting call request ${requestId} for query ${queryId}`);
+    
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/communication/call/${queryId}/accept-request/${requestId}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = `Failed to accept call request: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData && errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (parseError) {
+        try {
+          const textResponse = await response.text();
+          errorMessage = textResponse || errorMessage;
+        } catch (textError) {
+          console.error('Could not read response text:', textError);
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('Call request accepted successfully:', result);
+    return result;
+  } catch (error) {
+    console.error('Error accepting call request:', error);
+    throw error;
+  }
 } 

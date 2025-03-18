@@ -318,8 +318,12 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
       if (stage) filters.stage = stage;
       if (mode) filters.queryMode = mode as QueryMode;
       if (device) filters.device = device;
-      if (status) filters.status = status as QueryStatus;
       if (date) filters.date = date;
+      
+      // Only add status for transferred and resolved tabs
+      if (status && activeTab !== 'general') {
+        filters.status = status as QueryStatus;
+      }
       
       console.log("Applying filters:", JSON.stringify(filters, null, 2));
       console.log("Active tab:", activeTab);
@@ -329,7 +333,9 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
       // Fetch data based on the active tab
       if (activeTab === 'general') {
         console.log("Fetching filtered general data with filters:", JSON.stringify(filters, null, 2));
-        filteredData = await fetchGeneralQueries(filters);
+        // Remove status from filters for general queries
+        const { status: _, ...generalFilters } = filters;
+        filteredData = await fetchGeneralQueries(generalFilters);
         console.log("Filtered general data received:", filteredData?.length);
         
         // Add a small delay to ensure the handler is registered

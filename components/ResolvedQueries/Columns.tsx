@@ -245,13 +245,6 @@ const ActionCell = () => {
 
 export const columns: ColumnDef<ResolvedQueriesProps>[] = [
   {
-    accessorKey: "sid",
-    header: "SID",
-    cell: ({ row }) => {
-      return <div className="opacity-60">SID_{row.getValue("sid")}</div>;
-    },
-  },
-  {
     accessorKey: "donor",
     header: "Donor",
     cell: ({ row }) => {
@@ -277,13 +270,6 @@ export const columns: ColumnDef<ResolvedQueriesProps>[] = [
     header: "Stage",
     cell: ({ row }) => {
       return <div className="opacity-60">{row.getValue("stage")}</div>;
-    },
-  },
-  {
-    accessorKey: "queryMode",
-    header: "Query Mode",
-    cell: ({ row }) => {
-      return <QueryModeBadge mode={row.getValue("queryMode")} />;
     },
   },
   {

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { Input } from "@/components/ui/input";
 import Notification from "@/icons/Notification";
@@ -11,11 +11,11 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { Phone, LogOut, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 export default function Header() {
@@ -40,12 +40,6 @@ export default function Header() {
         <div className="flex flex-row gap-[24px] justify-center items-center">
           {isAuthenticated ? (
             <>
-              <Link href="/test-call">
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
-                  <Phone className="h-4 w-4" />
-                  Test Call
-                </Button>
-              </Link>
               <Settings />
               <Notification />
               <DropdownMenu>
@@ -57,7 +51,9 @@ export default function Header() {
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5 text-sm font-medium">
                     {user?.name}
-                    <div className="text-xs text-muted-foreground">{user?.role}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {user?.role}
+                    </div>
                   </div>
                   {isSuperAdmin && (
                     <Link href="/admin/users">
