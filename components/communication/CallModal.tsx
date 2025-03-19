@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { DockableModal } from '@/components/ui/dockable-modal';
 import { DailyCall } from './DailyCall';
 import { useAtom } from 'jotai';
@@ -31,6 +31,7 @@ export function CallModal({
   const [callState, setCallState] = useAtom(callStateAtom);
   const [, endCall] = useAtom(endCallAtom);
   const { user } = useAuth();
+  const [isConnecting, setIsConnecting] = useState(true);
 
   const handleLeave = () => {
     console.log("Ending call from handleLeave");
@@ -49,6 +50,19 @@ export function CallModal({
     }
   }, [isOpen, callState, setCallState]);
 
+  // Set connecting state just for the profile data status
+  useEffect(() => {
+    if (isOpen) {
+      setIsConnecting(true);
+      const timer = setTimeout(() => {
+        setIsConnecting(false);
+      }, 8000);
+      return () => clearTimeout(timer);
+    } else {
+      setIsConnecting(false);
+    }
+  }, [isOpen]);
+
   // Debug call state changes
   useEffect(() => {
     console.log("CallModal debug - Current call state:", {
@@ -56,21 +70,25 @@ export function CallModal({
       callStateActive: callState.isActive,
       hasRoomUrl: !!callState.roomUrl,
       hasRoomToken: !!callState.roomToken,
-      mode: callState.mode
+      mode: callState.mode,
+      isConnecting
     });
-  }, [isOpen, callState]);
+  }, [isOpen, callState, isConnecting]);
 
   // Ensure profile data reflects the current call state
   const callProfileData = {
     name: callState.mode === 'video' ? 'Video Call' : 'Audio Call',
     image: profileData.image || '',
-    status: callState.isActive ? 'Connected' : 'Connecting...'
+    status: isConnecting ? 'Connecting...' : (callState.isActive ? 'Connected' : 'Not connected')
   };
 
   // If modal is not open, don't render anything
   if (!isOpen) {
     return null;
   }
+
+  // Check if we have the required data to join a call
+  const hasRequiredCallData = callState.roomUrl && callState.roomToken;
 
   return (
     <DockableModal
@@ -81,14 +99,13 @@ export function CallModal({
       profileData={callProfileData}
     >
       <div className="h-full -mx-4 -my-4"> {/* Full height and compensate for modal padding */}
-        {/* If we have incomplete call data, show a connecting UI */}
-        {(!callState.roomUrl || !callState.roomToken) ? (
+        {!hasRequiredCallData ? (
           <div className="flex flex-col items-center justify-center h-full">
             <Loader2 className="animate-spin h-8 w-8 text-primary mb-4" />
             <div className="text-lg font-semibold">Connecting to call...</div>
             <div className="text-sm text-gray-500 mt-2">
-              {!callState.roomUrl ? "Missing room URL" :
-              !callState.roomToken ? "Missing room token" : "Connecting..."}
+              {!callState.roomUrl ? "Missing room URL" : 
+               !callState.roomToken ? "Missing room token" : "Waiting for call data..."}
             </div>
             
             <button 
@@ -99,10 +116,10 @@ export function CallModal({
             </button>
           </div>
         ) : (
-          /* Main call UI */
+          /* Main call UI with DailyCall which will show its own loading UI */
           <DailyCall
-            roomUrl={callState.roomUrl}
-            roomToken={callState.roomToken}
+            roomUrl={callState.roomUrl || ''}
+            roomToken={callState.roomToken || ''}
             mode={callState.mode === 'video' ? 'video' : 'audio'}
           >
             <CallUI onLeave={handleLeave} />

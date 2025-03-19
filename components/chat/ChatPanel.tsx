@@ -130,6 +130,8 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
   const [isSending, setIsSending] = useState(false);
   const [isStartingVideoCall, setIsStartingVideoCall] = useState(false);
   const [isStartingAudioCall, setIsStartingAudioCall] = useState(false);
+  const [isJoiningCall, setIsJoiningCall] = useState(false);
+  const [isAcceptingCall, setIsAcceptingCall] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [callState] = useAtom(callStateAtom);
   const [, startCall] = useAtom(startCallAtom);
@@ -668,8 +670,13 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                   console.log(`Accepting call with requestId: ${requestId}, mode: ${callMode}`);
                   handleCallAcceptResponse(requestId, callMode as "VIDEO" | "AUDIO");
                 }}
+                disabled={isAcceptingCall === extractedCallRequestId}
               >
-                Accept Call
+                {isAcceptingCall === extractedCallRequestId ? (
+                  <><span className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></span>Accepting...</>
+                ) : (
+                  "Accept Call"
+                )}
               </Button>
             </div>
           )}
@@ -692,8 +699,13 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                   });
                   handleJoinCall(message);
                 }}
+                disabled={isJoiningCall}
               >
-                Join Call
+                {isJoiningCall ? (
+                  <><span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></span>Joining...</>
+                ) : (
+                  "Join Call"
+                )}
               </Button>
             </div>
           )}
@@ -770,8 +782,13 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                   });
                   handleJoinCall(message);
                 }}
-                  >
-                    Join Call
+                disabled={isJoiningCall}
+              >
+                {isJoiningCall ? (
+                  <><span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></span>Joining...</>
+                ) : (
+                  "Join Call"
+                )}
                   </Button>
             </div>
           )}
@@ -816,6 +833,8 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
       // Function to handle joining a call
   const handleJoinCall = async (message: ExtendedChatMessage) => {
     try {
+      setIsJoiningCall(true);
+    
       // Enhanced debug logging
       console.log("Call join data:", {
         messageType: message.messageType,
@@ -827,7 +846,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
       });
       
       // Check if we have a complete callSession object
-        if (message.callSession) {
+      if (message.callSession) {
         // Check if roomUrl is missing but we have roomName
         if (!message.callSession.roomUrl && message.callSession.roomName) {
           // Construct roomUrl from roomName
@@ -919,6 +938,8 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
     } catch (error) {
       console.error("Error handling call:", error);
       toast.error("Failed to handle call");
+    } finally {
+      setIsJoiningCall(false);
     }
   };
 
@@ -930,6 +951,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
     }
 
     try {
+      setIsAcceptingCall(callRequestId);
       toast.loading("Accepting call request...");
       
       const response = await acceptCallRequestById(donorQueryId, callRequestId);
@@ -976,6 +998,8 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
       console.error("Error accepting call:", error);
       toast.dismiss();
       toast.error("Failed to accept call request");
+    } finally {
+      setIsAcceptingCall(null);
     }
   };
 
