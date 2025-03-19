@@ -22,6 +22,7 @@ import {
   Users,
   Maximize2,
   ChevronDown,
+  Settings,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -43,7 +44,11 @@ import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 
 interface CallUIProps {
@@ -290,6 +295,410 @@ function ParticipantDropdown() {
   );
 }
 
+// AudioDeviceSelector component to manage audio input devices
+function AudioDeviceSelector() {
+  const daily = useDaily();
+  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedInputDevice, setSelectedInputDevice] = useState<string | null>(null);
+  const [selectedOutputDevice, setSelectedOutputDevice] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'input' | 'output'>('input');
+  const [isTesting, setIsTesting] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioAnalyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
+  // Load available audio devices
+  const loadAudioDevices = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Request permission if needed
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Get all devices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      
+      // Filter devices by type
+      const inputs = devices.filter(device => device.kind === 'audioinput');
+      const outputs = devices.filter(device => device.kind === 'audiooutput');
+      
+      setAudioInputDevices(inputs);
+      setAudioOutputDevices(outputs);
+      
+      // Get current devices from Daily.co
+      if (daily) {
+        try {
+          // Get current device configuration - cast to any to bypass type issues
+          const inputDevices = await daily.getInputDevices() as any;
+          if (inputDevices && typeof inputDevices === 'object') {
+            // Get input device
+            const audioInputId = inputDevices.audioDeviceId || '';
+            if (audioInputId) {
+              setSelectedInputDevice(audioInputId);
+            } else if (inputs.length > 0) {
+              // If no input device is set but we have inputs available, select the default device
+              const defaultInputDevice = inputs.find(d => d.deviceId === 'default' || d.deviceId === '');
+              if (defaultInputDevice) {
+                setSelectedInputDevice(defaultInputDevice.deviceId);
+                handleDeviceChange('input', defaultInputDevice.deviceId);
+              } else {
+                // If no default device found, use the first available input device
+                setSelectedInputDevice(inputs[0].deviceId);
+                handleDeviceChange('input', inputs[0].deviceId);
+              }
+            }
+            
+            // Get output device
+            const audioOutputId = inputDevices.speakerDeviceId || '';
+            if (audioOutputId) {
+              setSelectedOutputDevice(audioOutputId);
+            } else if (outputs.length > 0) {
+              // If no speaker is set but we have outputs available, select the default device
+              const defaultDevice = outputs.find(d => d.deviceId === 'default' || d.deviceId === '');
+              if (defaultDevice) {
+                setSelectedOutputDevice(defaultDevice.deviceId);
+                handleDeviceChange('output', defaultDevice.deviceId);
+              } else {
+                // If no default device found, use the first available output device
+                setSelectedOutputDevice(outputs[0].deviceId);
+                handleDeviceChange('output', outputs[0].deviceId);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error getting current audio devices:", err);
+        }
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error loading audio devices:", error);
+      toast.error("Failed to load audio devices");
+      setIsLoading(false);
+    }
+  };
+
+  // Start audio level testing
+  const startMicrophoneTest = async () => {
+    if (isTesting) {
+      stopMicrophoneTest();
+      return;
+    }
+    
+    try {
+      setIsTesting(true);
+      
+      // Request microphone access
+      const constraints: MediaStreamConstraints = {
+        audio: selectedInputDevice ? { deviceId: { exact: selectedInputDevice } } : true,
+        video: false
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // Create audio context and analyzer
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      
+      // Connect the microphone stream to the analyzer
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      
+      // Store references for cleanup
+      audioContextRef.current = audioContext;
+      audioAnalyserRef.current = analyser;
+      
+      // Setup audio level monitoring
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      
+      const updateAudioLevel = () => {
+        if (!analyser) return;
+        
+        analyser.getByteFrequencyData(dataArray);
+        
+        // Calculate average volume level
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        const normalizedLevel = Math.min(100, Math.round((avg / 255) * 100));
+        
+        setAudioLevel(normalizedLevel);
+        
+        // Continue monitoring
+        animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
+      };
+      
+      // Start monitoring
+      updateAudioLevel();
+      
+      // Add logging for troubleshooting
+      console.log("Microphone test started with device:", selectedInputDevice);
+      
+    } catch (error) {
+      console.error("Error testing microphone:", error);
+      toast.error("Failed to test microphone");
+      setIsTesting(false);
+    }
+  };
+  
+  // Stop audio testing
+  const stopMicrophoneTest = () => {
+    setIsTesting(false);
+    setAudioLevel(0);
+    
+    // Stop animation frame
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
+    // Close audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(err => console.error("Error closing audio context:", err));
+      audioContextRef.current = null;
+    }
+    
+    // Clear analyzer
+    audioAnalyserRef.current = null;
+    
+    console.log("Microphone test stopped");
+  };
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (isTesting) {
+        stopMicrophoneTest();
+      }
+    };
+  }, [isTesting]);
+
+  // Load devices on component mount
+  useEffect(() => {
+    if (daily) {
+      loadAudioDevices();
+    }
+  }, [daily]);
+
+  // Handle device change
+  const handleDeviceChange = async (type: 'input' | 'output', deviceId: string) => {
+    try {
+      if (!daily) return;
+      
+      // Stop testing if changing input device
+      if (type === 'input' && isTesting) {
+        stopMicrophoneTest();
+      }
+      
+      // Prepare device configuration
+      const deviceConfig: any = {};
+      
+      if (type === 'input') {
+        deviceConfig.audioDeviceId = deviceId;
+        setSelectedInputDevice(deviceId);
+      } else {
+        deviceConfig.speakerDeviceId = deviceId;
+        setSelectedOutputDevice(deviceId);
+      }
+      
+      // Update Daily.co's device settings
+      await daily.setInputDevicesAsync(deviceConfig);
+      
+      toast.success(`Audio ${type} device updated`);
+    } catch (error) {
+      console.error(`Error changing audio ${type} device:`, error);
+      toast.error(`Failed to change audio ${type} device`);
+    }
+  };
+
+  // Refresh device list
+  const handleRefreshDevices = () => {
+    // Stop testing if refreshing devices
+    if (isTesting) {
+      stopMicrophoneTest();
+    }
+    loadAudioDevices();
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className={cn(
+            "rounded-full h-7 flex items-center px-2",
+            activeTab === 'input' && audioLevel > 20 && "bg-green-50 text-green-500 border-green-200"
+          )}
+          disabled={isLoading}
+        >
+          <Settings className="h-3.5 w-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuLabel>Audio Device Settings</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        
+        {/* Tab Selection */}
+        <div className="flex border-b px-1 mb-1">
+          <button
+            className={cn(
+              "py-1 px-2 text-xs rounded-t-md border-b-2 transition-colors",
+              activeTab === 'input' 
+                ? "border-primary text-primary" 
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => setActiveTab('input')}
+          >
+            Microphone
+          </button>
+          <button
+            className={cn(
+              "py-1 px-2 text-xs rounded-t-md border-b-2 transition-colors",
+              activeTab === 'output' 
+                ? "border-primary text-primary" 
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => setActiveTab('output')}
+          >
+            Speaker
+          </button>
+        </div>
+        
+        {/* Microphone Test UI */}
+        {activeTab === 'input' && (
+          <div className="p-2 mb-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Test Microphone</span>
+              <Button 
+                variant={isTesting ? "destructive" : "outline"} 
+                size="sm" 
+                className="h-6 text-xs rounded-md"
+                onClick={startMicrophoneTest}
+              >
+                {isTesting ? "Stop Test" : "Start Test"}
+              </Button>
+            </div>
+            
+            {/* Audio level indicator */}
+            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div 
+                className={cn(
+                  "h-full transition-all duration-75",
+                  audioLevel > 70 ? "bg-green-500" : 
+                  audioLevel > 30 ? "bg-green-400" : 
+                  audioLevel > 0 ? "bg-green-300" : "bg-gray-200"
+                )}
+                style={{ width: `${audioLevel}%` }}
+              />
+            </div>
+            
+            {isTesting && (
+              <div className="text-xs text-center mt-1 text-muted-foreground">
+                {audioLevel < 5 ? (
+                  "No audio detected. Try speaking or check your microphone."
+                ) : audioLevel < 30 ? (
+                  "Low audio level detected. Try speaking louder."
+                ) : (
+                  "Audio is being transmitted! 👍"
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
+        <DropdownMenuGroup className="max-h-[40vh] overflow-y-auto">
+          {isLoading ? (
+            <DropdownMenuItem disabled>Loading devices...</DropdownMenuItem>
+          ) : activeTab === 'input' ? (
+            // Microphone (Input) devices
+            audioInputDevices.length === 0 ? (
+              <DropdownMenuItem disabled>No microphones found</DropdownMenuItem>
+            ) : (
+              audioInputDevices.map(device => (
+                <DropdownMenuItem
+                  key={device.deviceId}
+                  className={cn(
+                    "flex items-center gap-2",
+                    selectedInputDevice === device.deviceId && "bg-primary/10"
+                  )}
+                  onClick={() => handleDeviceChange('input', device.deviceId)}
+                >
+                  <Mic className={cn(
+                    "h-3.5 w-3.5", 
+                    selectedInputDevice === device.deviceId ? "text-primary" : "text-muted-foreground"
+                  )} />
+                  <span className="flex-1 truncate">
+                    {device.label || `Microphone (${device.deviceId.substring(0, 8)}...)`}
+                  </span>
+                  {selectedInputDevice === device.deviceId && (
+                    <Badge variant="default" className="ml-auto py-0 px-1 h-4 text-[10px]">
+                      Active
+                    </Badge>
+                  )}
+                </DropdownMenuItem>
+              ))
+            )
+          ) : (
+            // Speaker (Output) devices
+            audioOutputDevices.length === 0 ? (
+              <DropdownMenuItem disabled>No speakers found</DropdownMenuItem>
+            ) : (
+              audioOutputDevices.map(device => (
+                <DropdownMenuItem
+                  key={device.deviceId}
+                  className={cn(
+                    "flex items-center gap-2",
+                    selectedOutputDevice === device.deviceId && "bg-primary/10"
+                  )}
+                  onClick={() => handleDeviceChange('output', device.deviceId)}
+                >
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className={cn(
+                      "h-3.5 w-3.5", 
+                      selectedOutputDevice === device.deviceId ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                  </svg>
+                  <span className="flex-1 truncate">
+                    {device.label || (device.deviceId === 'default' ? 'System Default' : `Speaker (${device.deviceId.substring(0, 8)}...)`)}
+                  </span>
+                  {selectedOutputDevice === device.deviceId && (
+                    <Badge variant="default" className="ml-auto py-0 px-1 h-4 text-[10px]">
+                      Active
+                    </Badge>
+                  )}
+                </DropdownMenuItem>
+              ))
+            )
+          )}
+        </DropdownMenuGroup>
+        
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleRefreshDevices}>
+          <span className="text-xs">Refresh device list</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function CallUI({ onLeave }: CallUIProps) {
   const daily = useDaily();
   const participantIds = useParticipantIds();
@@ -302,6 +711,7 @@ export function CallUI({ onLeave }: CallUIProps) {
   const [, setParticipantCount] = useAtom(participantCountAtom);
   const [, endCall] = useAtom(endCallAtom);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullyJoined, setIsFullyJoined] = useState(false);
   const [connectionState, setConnectionState] = useState<string>("connecting");
@@ -370,13 +780,55 @@ export function CallUI({ onLeave }: CallUIProps) {
 
         if (isMuted) {
           await daily.setLocalAudio(false);
+        } else {
+          // Explicitly ensure microphone is enabled
+          await daily.setLocalAudio(true);
+          console.log("Microphone explicitly enabled");
         }
 
-        console.log("Call initialized with:", {
+        // Verify audio transmission capabilities
+        const mediaState = daily.participants().local?.tracks;
+        console.log("Call audio state:", {
           isMuted,
           isVideoOff,
+          localAudioActive: mediaState?.audio?.state === "playable",
+          localAudioTrack: !!mediaState?.audio?.track,
+          micPermission: !!navigator.mediaDevices,
+          trackSettings: mediaState?.audio?.track?.getSettings(),
           participantCount: participantIds.length,
         });
+
+        // Add network stats reporting for audio transmission verification
+        const startAudioStats = async () => {
+          try {
+            if (daily && !isMuted) {
+              const stats = await daily.getNetworkStats();
+              // Type assertion for audio stats since the Daily.co typings are incomplete
+              const statsData = stats?.stats?.latest as any;
+              
+              if (statsData?.audio?.send) {
+                const audioStats = statsData.audio.send;
+                console.log("Audio transmission stats:", {
+                  bitrate: audioStats.bitrate,
+                  packetLoss: audioStats.packetsLost,
+                  jitter: audioStats.jitter,
+                  audioLevel: audioStats.audioLevel,
+                  active: audioStats.bitrate > 0
+                });
+                
+                // If no bitrate, audio might not be transmitting
+                if (audioStats.bitrate === 0 && !isMuted) {
+                  console.warn("Warning: Audio bitrate is 0 - your audio may not be transmitting");
+                }
+              }
+            }
+          } catch (err) {
+            console.error("Error getting audio stats:", err);
+          }
+        };
+        
+        // Run stats check after a short delay to allow the call to stabilize
+        setTimeout(startAudioStats, 5000);
       } catch (error) {
         console.error("Error initializing call:", error);
         toast.error("Failed to initialize call settings");
@@ -385,6 +837,85 @@ export function CallUI({ onLeave }: CallUIProps) {
 
     initializeCall();
   }, [daily, isMuted, isVideoOff, participantIds.length]);
+
+  // Add active audio level monitoring for the local participant
+  useEffect(() => {
+    if (!daily || isMuted) return;
+    
+    // Create audio level tracker
+    let lastAudioActivity = 0;
+    let noAudioCount = 0;
+    let hasShownTransmissionToast = false;
+    
+    const checkAudioTransmission = () => {
+      try {
+        // Use type assertion for audio_activity property
+        const localParticipant = daily.participants().local as any;
+        if (!localParticipant) return;
+        
+        const audioActivity = localParticipant.audio_activity || 0;
+        
+        // Update speaking state for visual indicator
+        setIsSpeaking(audioActivity > 20);
+        
+        // Log significant audio activity changes and show a toast the first time audio is transmitted
+        if (audioActivity > 30 && lastAudioActivity < 30) {
+          console.log("Audio transmission active: your voice is being sent", { level: audioActivity });
+          
+          // Show a one-time toast notification to confirm audio transmission
+          if (!hasShownTransmissionToast) {
+            toast.success("✅ Microphone audio is transmitting!", {
+              id: "mic-transmission-confirmed",
+              duration: 3000
+            });
+            hasShownTransmissionToast = true;
+          }
+          
+          noAudioCount = 0;
+        }
+        
+        // Check for potential audio issues after some time without activity
+        if (audioActivity < 5 && lastAudioActivity < 5) {
+          noAudioCount++;
+          
+          // After ~10 seconds of no audio, suggest checking
+          if (noAudioCount === 20 && !isMuted) {
+            console.warn("No audio activity detected for 10 seconds while unmuted. Consider checking your microphone.");
+            
+            // Only show this warning toast if we've previously detected audio
+            if (hasShownTransmissionToast) {
+              toast.warning("No audio detected for a while. Try speaking or check your microphone.", {
+                id: "mic-silence-warning",
+                duration: 5000
+              });
+            }
+          }
+        }
+        
+        lastAudioActivity = audioActivity;
+      } catch (err) {
+        console.error("Error monitoring audio transmission:", err);
+      }
+    };
+    
+    // Check every 500ms
+    const intervalId = setInterval(checkAudioTransmission, 500);
+    
+    // Also add a delayed check to warn if no audio has been detected after a reasonable time
+    const delayedAudioCheck = setTimeout(() => {
+      if (!hasShownTransmissionToast && !isMuted) {
+        toast.info("Try speaking to verify your microphone is working", {
+          id: "mic-check-reminder",
+          duration: 5000
+        });
+      }
+    }, 8000);
+    
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(delayedAudioCheck);
+    };
+  }, [daily, isMuted]);
 
   // Toggle audio mute state
   const toggleAudio = async () => {
@@ -488,17 +1019,30 @@ export function CallUI({ onLeave }: CallUIProps) {
               {connectionState === "joined" ? "Finalizing connection..." : "Setting up your call..."}
             </div>
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn("rounded-full", 
-                  isMuted ? "bg-red-100 text-red-600 border-red-200" : "bg-gray-100"
-                )}
-                onClick={toggleAudio}
-              >
-                {isMuted ? <MicOff className="h-4 w-4 mr-1" /> : <Mic className="h-4 w-4 mr-1" />}
-                {isMuted ? "Unmute" : "Mute"}
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isMuted ? "outline" : "default"}
+                      size="icon"
+                      className={cn(
+                        "rounded-full h-8 w-8 relative",
+                        isMuted && "bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 border-red-200",
+                        !isMuted && isSpeaking && "ring-2 ring-green-400"
+                      )}
+                      onClick={toggleAudio}
+                    >
+                      {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                      {!isMuted && isSpeaking && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isMuted ? 'Unmute' : (isSpeaking ? 'Mute (Audio Transmitting)' : 'Mute')}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Button
                 variant="outline"
                 size="sm"
@@ -728,14 +1272,7 @@ export function CallUI({ onLeave }: CallUIProps) {
       
       {/* Controls bar - more compact */}
       <div className="bg-white border-t py-2 px-2 shadow-sm">
-        <div className="flex items-center justify-between">
-          {/* Left side - Meeting info */}
-          <div className="flex items-center gap-1">
-            <Badge variant="outline" className="rounded-full px-2 py-0.5 text-xs font-normal">
-              {participantIds.length} {participantIds.length === 1 ? 'participant' : 'participants'}
-            </Badge>
-          </div>
-          
+        <div className="flex items-center justify-between">       
           {/* Center - Main call controls */}
           <div className="flex items-center gap-2">
             <TooltipProvider>
@@ -745,16 +1282,20 @@ export function CallUI({ onLeave }: CallUIProps) {
                     variant={isMuted ? "outline" : "default"}
                     size="icon"
                     className={cn(
-                      "rounded-full h-8 w-8",
-                      isMuted && "bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 border-red-200"
+                      "rounded-full h-8 w-8 relative",
+                      isMuted && "bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 border-red-200",
+                      !isMuted && isSpeaking && "ring-2 ring-green-400"
                     )}
                     onClick={toggleAudio}
                   >
                     {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                    {!isMuted && isSpeaking && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+                    )}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {isMuted ? 'Unmute' : 'Mute'}
+                  {isMuted ? 'Unmute' : (isSpeaking ? 'Mute (Audio Transmitting)' : 'Mute')}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -823,6 +1364,8 @@ export function CallUI({ onLeave }: CallUIProps) {
           {/* Right side - Additional controls */}
           <div className="flex items-center gap-1">            
             <ParticipantDropdown />
+            
+            <AudioDeviceSelector />
             
             <TooltipProvider>
               <Tooltip>

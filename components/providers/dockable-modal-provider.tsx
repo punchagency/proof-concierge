@@ -12,6 +12,9 @@ import { CallManagerProvider } from "./CallManagerProvider";
 import { QueryDetails } from "../QueryDetails";
 import { DockableQueryModal } from "../GeneralQueries/DockableQueryModal";
 import { GeneralQuery } from "@/lib/api/donor-queries";
+import { callStateAtom, endCallAtom } from "@/lib/atoms/callState";
+import { useAtom } from "jotai";
+import { endCall as endCallApi, updateQueryMode } from "@/lib/api/communication";
 
 // Serializable modal data structure
 interface SerializableModalData {
@@ -65,6 +68,8 @@ export function DockableModalProvider({
 }) {
   const [modals, setModals] = useState<Modal[]>([]);
   const [maxModals, setMaxModals] = useState(5);
+  const [callState] = useAtom(callStateAtom);
+  const [, endCall] = useAtom(endCallAtom);
 
   // Restore modals from localStorage on mount
   useEffect(() => {
@@ -185,9 +190,99 @@ export function DockableModalProvider({
     [modals, maxModals]
   );
 
-  const closeModal = useCallback((id: string) => {
+  const closeModal = useCallback(async (id: string) => {
+    // Check if call state is active
+    if (callState.isActive && callState.roomName) {
+      try {
+        console.log("Ending call due to modal closing");
+        
+        // First, if there's a Daily instance, use it to ensure proper cleanup
+        try {
+          // Find all Daily.co iframes and attempt to access their daily instance
+          document.querySelectorAll('iframe').forEach(iframe => {
+            try {
+              // Check if this is a Daily iframe
+              if (iframe.src && iframe.src.includes('daily')) {
+                const dailyInstance = (iframe as any).daily;
+                if (dailyInstance && typeof dailyInstance.leave === 'function') {
+                  // Leave call properly before destroying
+                  dailyInstance.leave();
+                  dailyInstance.destroy();
+                  console.log("Successfully left and destroyed Daily call");
+                }
+              }
+            } catch (e) {
+              console.error("Error accessing Daily instance:", e);
+            }
+          });
+        } catch (e) {
+          console.error("Error cleaning up Daily instance:", e);
+        }
+        
+        // End the call on the backend
+        await endCallApi(callState.roomName);
+        
+        // Reset call state via Jotai atom
+        endCall();
+        
+        // More aggressive approach to stop all media tracks
+        try {
+          // Method 1: Get all media streams from elements and stop tracks
+          document.querySelectorAll('video, audio').forEach(element => {
+            const mediaElement = element as HTMLMediaElement;
+            if (mediaElement.srcObject instanceof MediaStream) {
+              const stream = mediaElement.srcObject;
+              stream.getTracks().forEach(track => {
+                track.stop();
+                console.log(`Stopped track: ${track.kind}, enabled: ${track.enabled}, state: ${track.readyState}`);
+              });
+              mediaElement.srcObject = null;
+            }
+          });
+
+          // Method 2: Find all iframes that could contain Daily.co and remove them
+          document.querySelectorAll('iframe').forEach(iframe => {
+            if (iframe.src && (iframe.src.includes('daily') || iframe.hasAttribute('data-daily-iframe'))) {
+              console.log(`Removing Daily iframe: ${iframe.src}`);
+              iframe.remove();
+            }
+          });
+
+          // Method 3: Find and stop any active media tracks globally
+          if (navigator && navigator.mediaDevices) {
+            // Get current active tracks from getUserMedia
+            navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+              .then(stream => {
+                stream.getTracks().forEach(track => {
+                  track.stop();
+                  console.log(`Stopped media track: ${track.kind}`);
+                });
+              })
+              .catch(err => console.log('No media streams to stop'));
+            
+            // Also check for any enumerateDevices change to reset permissions
+            navigator.mediaDevices.enumerateDevices()
+              .then(() => console.log("Media device enumeration complete"))
+              .catch(err => console.log("Media device enumeration error", err));
+          }
+
+          console.log("Successfully released all camera and microphone resources");
+        } catch (mediaError) {
+          console.error("Error stopping media tracks:", mediaError);
+        }
+        
+        // If the query has an ID, update its mode back to Text
+        if (callState.queryId) {
+          await updateQueryMode(callState.queryId, "Text");
+        }
+      } catch (error) {
+        console.error("Error ending call when closing modal:", error);
+      }
+    }
+    
+    // Remove the modal
     setModals((prev) => prev.filter((modal) => modal.id !== id));
-  }, []);
+  }, [callState.isActive, callState.roomName, callState.queryId, endCall]);
 
   return (
     <DockableModalContext.Provider value={{ openModal, closeModal }}>
