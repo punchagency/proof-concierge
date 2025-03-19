@@ -1,7 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, login as apiLogin, getCurrentUser } from '../api/auth';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { User, login as apiLogin } from '../api/auth';
 import Cookies from 'js-cookie';
 
 interface AuthContextType {
@@ -20,23 +20,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Check for token in localStorage and cookies on initial load
-  useEffect(() => {
-    const storedToken = localStorage.getItem('auth_token');
-    if (storedToken) {
-      setToken(storedToken);
-      fetchUser(storedToken);
-    } else {
-      setIsLoading(false);
-    }
+  
+  // Logout function
+  const logout = useCallback(() => {
+    localStorage.removeItem('auth_token');
+    Cookies.remove('auth_token');
+    setToken(null);
+    setUser(null);
   }, []);
-
-  // Fetch user data when token changes
-  const fetchUser = async (authToken: string) => {
+  
+  // Fetch current user data using token
+  const fetchUser = useCallback(async () => {
+    if (!token) return;
+    
     try {
       setIsLoading(true);
-      const userData = await getCurrentUser(authToken);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user data');
+      }
+      
+      const userData = await response.json();
       setUser(userData);
     } catch (error) {
       console.error('Error fetching user:', error);
@@ -44,7 +53,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, logout]);
+
+  // Check for token in localStorage and cookies on initial load
+  useEffect(() => {
+    const storedToken = localStorage.getItem('auth_token');
+    if (storedToken) {
+      setToken(storedToken);
+      fetchUser();
+    } else {
+      setIsLoading(false);
+    }
+  }, [fetchUser]);  // Add fetchUser as a dependency
 
   // Login function
   const login = async (username: string, password: string) => {
@@ -60,21 +80,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(access_token);
       
       // Fetch user data
-      await fetchUser(access_token);
+      await fetchUser();
     } catch (error) {
       console.error('Login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Logout function
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    Cookies.remove('auth_token');
-    setToken(null);
-    setUser(null);
   };
 
   const isAuthenticated = !!token && !!user;

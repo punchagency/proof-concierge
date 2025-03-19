@@ -19,7 +19,7 @@ export default function GeneralQueries({ data }: GeneralQueriesComponentProps) {
       <DataTable 
         columns={columns} 
         data={data} 
-        onRowClick={(rowData) => {
+        onRowClick={() => {
           // The row click is handled by the DataTable component
         }}
       />

@@ -68,7 +68,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       // Also clean up any lingering iframes
       cleanupDailyIframes();
     };
-  }, []);
+  }, [callState.callInstance]);
 
   const startCall = async (userId: number, mode: CallMode) => {
     try {
@@ -154,7 +154,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         console.log('Successfully joined meeting');
       });
 
-      callInstance.on('error', (error: any) => {
+      callInstance.on('error', (error: Error) => {
         console.error('Daily.co error:', error);
         setIsStartingCall(false);
         dailyIframeExists = false;

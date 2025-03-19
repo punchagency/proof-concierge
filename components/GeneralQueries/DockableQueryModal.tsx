@@ -18,6 +18,14 @@ interface DockableQueryModalProps {
   initiallyAccepted?: boolean;
 }
 
+// First, define a proper interface for admin users
+interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role?: string;
+}
+
 export function DockableQueryModal({ data, initiallyAccepted = false }: DockableQueryModalProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -25,7 +33,7 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
   const [isAccepting, setIsAccepting] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
-  const [adminUsers, setAdminUsers] = useState<any[]>([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedAdmin, setSelectedAdmin] = useState<string>('');
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);

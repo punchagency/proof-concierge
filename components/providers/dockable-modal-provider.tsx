@@ -13,9 +13,6 @@ import { QueryDetails } from "../QueryDetails";
 import { DockableQueryModal } from "../GeneralQueries/DockableQueryModal";
 import { GeneralQuery } from "@/lib/api/donor-queries";
 
-// Import DonorQuery type
-import type { DonorQuery } from "@/components/user-test/UserQueryList";
-
 // Serializable modal data structure
 interface SerializableModalData {
   id: string;

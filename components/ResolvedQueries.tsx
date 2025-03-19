@@ -7,6 +7,11 @@ import { fetchResolvedQueries, ResolvedQuery, FilterParams } from "@/lib/api/don
 
 export type ResolvedQueriesProps = ResolvedQuery;
 
+// Define a custom Window interface that includes our handler function
+interface CustomWindow extends Window {
+  handleFilteredResolvedQueries?: (filteredData: ResolvedQueriesProps[]) => void;
+}
+
 export default function ResolvedQueries() {
   const [data, setData] = useState<ResolvedQueriesProps[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +54,7 @@ export default function ResolvedQueries() {
     console.log("Setting handleFilteredResolvedQueries on window");
     
     // Define the handler function that will be called by FilterDropdown
-    (window as any).handleFilteredResolvedQueries = (filteredData: ResolvedQueriesProps[]) => {
+    (window as CustomWindow).handleFilteredResolvedQueries = (filteredData: ResolvedQueriesProps[]) => {
       console.log("Window handler called with filtered data:", filteredData?.length);
       console.log("Current data length before update:", data.length);
       console.log("Sample filtered data:", filteredData?.slice(0, 2));
@@ -59,7 +64,7 @@ export default function ResolvedQueries() {
     return () => {
       // Clean up
       console.log("Cleaning up handleFilteredResolvedQueries");
-      delete (window as any).handleFilteredResolvedQueries;
+      delete (window as CustomWindow).handleFilteredResolvedQueries;
     };
   }, [data, currentFilters, handleFilteredData]); // Include all dependencies
 

@@ -3,37 +3,12 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { TransferredQueriesProps } from "../TransferredQueries";
 import { Button } from "../ui/button";
-import Text from "@/icons/Text";
-import VideoCall from "@/icons/VideoCall";
-import Huddle from "@/icons/Huddle";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { sendQueryReminder } from "@/lib/api/donor-queries";
+import { sendQueryReminder, TransferredQuery } from "@/lib/api/donor-queries";
 
-const QueryModeBadge = ({ mode }: { mode: string }) => {
-  const badgeStyles = {
-    Text: "bg-[#F0F9FF] text-[#007DC7] border-[#BAE6FD]",
-    "Video Call": "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]",
-    Huddle: "bg-[#FEF3C7] text-[#B45309]",
-  }[mode] || "";
-
-  const icons = {
-    Text: <Text />,
-    "Video Call": <VideoCall />,
-    Huddle: <Huddle />,
-  };
-
-  return (
-    <div
-      className={`px-2 py-1 rounded-full text-[13px] font-semibold w-fit flex items-center gap-x-1 ${badgeStyles}`}
-    >
-      {icons[mode as keyof typeof icons]}
-      {mode}
-    </div>
-  );
-};
 
 const DeviceBadge = ({ device }: { device: string }) => {
   const getDeviceType = (device: string): string => {
@@ -236,7 +211,7 @@ const DeviceBadge = ({ device }: { device: string }) => {
   );
 };
 
-const ActionCell = ({ row }: { row: any }) => {
+const ActionCell = ({ row }: { row: { original: TransferredQuery } }) => {
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
   const [reminderMessage, setReminderMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);

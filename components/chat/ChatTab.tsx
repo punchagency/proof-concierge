@@ -28,7 +28,7 @@ interface ChatTabProps {
   fcmToken?: string;
 }
 
-export function ChatTab({ donorQuery, fcmToken }: ChatTabProps) {
+export function ChatTab({ donorQuery }: ChatTabProps) {
   const { startVideoCall, startAudioCall, isInCall } = useCallManager();
   const [isRequestingVideo, setIsRequestingVideo] = useState(false);
   const [isRequestingAudio, setIsRequestingAudio] = useState(false);
@@ -37,6 +37,7 @@ export function ChatTab({ donorQuery, fcmToken }: ChatTabProps) {
     setIsRequestingVideo(true);
     try {
       // Send a request to the backend to request a video call
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await requestCall(
         donorQuery.id,
         CallMode.VIDEO,
@@ -70,6 +71,7 @@ export function ChatTab({ donorQuery, fcmToken }: ChatTabProps) {
     setIsRequestingAudio(true);
     try {
       // Send a request to the backend to request an audio call
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await requestCall(
         donorQuery.id,
         CallMode.AUDIO,
@@ -155,7 +157,7 @@ export function ChatTab({ donorQuery, fcmToken }: ChatTabProps) {
       </div>
       
       <div className="flex-1 overflow-hidden">
-        <ChatPanel donorQueryId={donorQuery.id} fcmToken={fcmToken} />
+        <ChatPanel donorQueryId={donorQuery.id} />
       </div>
     </div>
   );

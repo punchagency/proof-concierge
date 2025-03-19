@@ -6,7 +6,6 @@ import { useState } from "react";
 import { ChatTab } from "./chat/ChatTab";
 import { toast } from "sonner";
 import { acceptQuery } from "@/lib/api/donor-queries";
-import CallRequestContainer from "./CallRequestContainer";
 
 export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
   const [activeTab, setActiveTab] = useState("details");
@@ -59,13 +58,6 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
         </TabsList>
 
         <TabsContent value="details" className="flex-1 flex flex-col gap-y-2 mt-0">
-          {/* Call Request Container */}
-          {data.id && (
-            <div className="mb-4">
-              <CallRequestContainer queryId={data.id} />
-            </div>
-          )}
-
           <div>
             <label className="text-[12px] text-gray-500">Session ID</label>
             <p className="font-semibold text-[14px]">SID_{data.sid}</p>

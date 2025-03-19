@@ -30,7 +30,7 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
   });
 
-  const handleRowClick = (rowData: any) => {
+  const handleRowClick = (rowData: TData) => {
     if (disableRowClick) return;
 
     if (onRowClick) {
@@ -38,17 +38,18 @@ export function DataTable<TData, TValue>({
     } else {
       // Check if the query is already accepted (status is 'In Progress')
       // The status in the API is defined as 'In Progress' with a space
-      const isAlreadyAccepted = rowData.status === "In Progress";
+      const queryData = rowData as unknown as GeneralQueriesProps;
+      const isAlreadyAccepted = queryData.status === "In Progress";
 
       openModal(
-        `query-${rowData.sid}`,
+        `query-${queryData.sid}`,
         <DockableQueryModal
-          data={rowData as GeneralQueriesProps}
+          data={queryData}
           initiallyAccepted={isAlreadyAccepted}
         />,
         {
-          name: rowData.donor,
-          image: `/avatars/${rowData.donorId}.jpg`,
+          name: queryData.donor,
+          image: `/avatars/${queryData.donorId}.jpg`,
           status: "Available",
         }
       );

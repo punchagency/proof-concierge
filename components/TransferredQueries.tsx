@@ -7,6 +7,11 @@ import { fetchTransferredQueries, TransferredQuery, FilterParams } from "@/lib/a
 
 export type TransferredQueriesProps = TransferredQuery;
 
+// Define a custom Window interface that includes our handler function
+interface CustomWindow extends Window {
+  handleFilteredTransferredQueries?: (filteredData: TransferredQueriesProps[]) => void;
+}
+
 export default function TransferredQueries() {
   const [data, setData] = useState<TransferredQueriesProps[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +54,7 @@ export default function TransferredQueries() {
     console.log("Setting handleFilteredTransferredQueries on window");
     
     // Define the handler function that will be called by FilterDropdown
-    (window as any).handleFilteredTransferredQueries = (filteredData: TransferredQueriesProps[]) => {
+    (window as CustomWindow).handleFilteredTransferredQueries = (filteredData: TransferredQueriesProps[]) => {
       console.log("Window handler called with filtered data:", filteredData?.length);
       console.log("Current data length before update:", data.length);
       console.log("Sample filtered data:", filteredData?.slice(0, 2));
@@ -59,7 +64,7 @@ export default function TransferredQueries() {
     return () => {
       // Clean up
       console.log("Cleaning up handleFilteredTransferredQueries");
-      delete (window as any).handleFilteredTransferredQueries;
+      delete (window as CustomWindow).handleFilteredTransferredQueries;
     };
   }, [data, currentFilters, handleFilteredData]); // Include all dependencies
 

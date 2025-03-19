@@ -50,12 +50,10 @@ export function QueryActions({
   showCommunicationButtons = false,
 }: QueryActionsProps) {
   const [isResolveDialogOpen, setIsResolveDialogOpen] = useState(false);
-  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [isTransferToUserDialogOpen, setIsTransferToUserDialogOpen] =
     useState(false);
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
   const [resolvedBy, setResolvedBy] = useState("");
-  const [transferredTo, setTransferredTo] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [importantNote, setImportantNote] = useState("");
   const [reminderMessage, setReminderMessage] = useState("");
@@ -187,11 +185,6 @@ export function QueryActions({
   const openResolveDialog = (e: React.MouseEvent) => {
     stopPropagation(e);
     setIsResolveDialogOpen(true);
-  };
-
-  const openTransferDialog = (e: React.MouseEvent) => {
-    stopPropagation(e);
-    setIsTransferDialogOpen(true);
   };
 
   const openTransferToUserDialog = (e: React.MouseEvent) => {

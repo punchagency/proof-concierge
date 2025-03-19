@@ -1,7 +1,7 @@
 import { fetchWithAuth } from './fetch-utils';
 
 // Define the API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com';
 
 // Chat message types
 export interface ChatMessage {
@@ -37,7 +37,8 @@ export interface ChatMessage {
   fcmToken?: string;
   
   // New fields for call-related messages
-  messageType?: "CHAT" | "CALL_STARTED" | "CALL_ENDED" | "SYSTEM";
+  messageType?: "CHAT" | "CALL_STARTED" | "CALL_ENDED" | "SYSTEM" | "QUERY";
+  isFromAdmin?: boolean;
   callMode?: "VIDEO" | "AUDIO";
   roomName?: string;
   callSessionId?: number;
@@ -48,6 +49,8 @@ export interface ChatMessage {
     status: "CREATED" | "STARTED" | "ENDED";
     roomName: string;
     userToken: string;
+    adminToken?: string;
+    roomUrl?: string;
     startedAt: string | null;
     endedAt: string | null;
   };
@@ -82,8 +85,11 @@ export async function sendChatMessage(
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (parseError) {
-        // If parsing fails, use the response text or a default message
+      } catch (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        error
+      ) {
+        // Ignore parsing error, use the response text or a default message
         try {
           const textResponse = await response.text();
           errorMessage = textResponse || errorMessage;
@@ -116,8 +122,11 @@ export async function getChatMessagesByDonorQuery(
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (parseError) {
-        // If parsing fails, use the response text or a default message
+      } catch (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        error
+      ) {
+        // Ignore parsing error, use the response text or a default message
         try {
           const textResponse = await response.text();
           errorMessage = textResponse || errorMessage;
@@ -151,8 +160,11 @@ export async function getChatMessagesBetweenUsers(
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (parseError) {
-        // If parsing fails, use the response text or a default message
+      } catch (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        error
+      ) {
+        // Ignore parsing error, use the response text or a default message
         try {
           const textResponse = await response.text();
           errorMessage = textResponse || errorMessage;
@@ -199,8 +211,11 @@ export async function getChatMessages(
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (parseError) {
-        // If parsing fails, use the response text or a default message
+      } catch (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        error
+      ) {
+        // Ignore parsing error, use the response text or a default message
         try {
           const textResponse = await response.text();
           errorMessage = textResponse || errorMessage;
@@ -241,7 +256,11 @@ export async function getQueryMessages(
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (parseError) {
+      } catch (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        error
+      ) {
+        // Ignore parsing error, use the response text or a default message
         try {
           const textResponse = await response.text();
           errorMessage = textResponse || errorMessage;
@@ -288,7 +307,11 @@ export async function sendAdminMessage(
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (parseError) {
+      } catch (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        error
+      ) {
+        // Ignore parsing error, use the response text or a default message
         try {
           const textResponse = await response.text();
           errorMessage = textResponse || errorMessage;

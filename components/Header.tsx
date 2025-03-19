@@ -9,7 +9,7 @@ import Search from "@/icons/Search";
 import NavBar from "./NavBar";
 import Link from "next/link";
 import { Button } from "./ui/button";
-import { Phone, LogOut, UserPlus } from "lucide-react";
+import { LogOut, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
   DropdownMenu,

@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { setLastCallData } from '../last-call/route';
 
-// Use the public environment variable
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,15 +16,13 @@ export async function POST(request: NextRequest) {
     // Log the response for debugging
     console.log('Call created successfully:', response.data);
     
-    // Store the call data for the test page
-    setLastCallData(response.data.data);
-    
     return NextResponse.json(response.data);
-  } catch (error: any) {
-    console.error('Error creating call:', error.response?.data || error.message);
+  } catch (error: unknown) {
+    const errorResponse = error as { response?: { data?: unknown, status?: number }, message?: string };
+    console.error('Error creating call:', errorResponse.response?.data || errorResponse.message);
     return NextResponse.json(
-      { error: 'Failed to create call', details: error.response?.data || error.message },
-      { status: error.response?.status || 500 }
+      { error: 'Failed to create call', details: errorResponse.response?.data || errorResponse.message },
+      { status: errorResponse.response?.status || 500 }
     );
   }
 }
@@ -47,11 +41,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { roomN
     console.log('Room deleted successfully:', response.data);
     
     return NextResponse.json(response.data);
-  } catch (error: any) {
-    console.error('Error deleting room:', error.response?.data || error.message);
+  } catch (error: unknown) {
+    const errorResponse = error as { response?: { data?: unknown, status?: number }, message?: string };
+    console.error('Error deleting room:', errorResponse.response?.data || errorResponse.message);
     return NextResponse.json(
-      { error: 'Failed to delete room', details: error.response?.data || error.message },
-      { status: error.response?.status || 500 }
+      { error: 'Failed to delete room', details: errorResponse.response?.data || errorResponse.message },
+      { status: errorResponse.response?.status || 500 }
     );
   }
 } 

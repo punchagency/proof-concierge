@@ -2,7 +2,7 @@ import { formatDate } from '../utils/date';
 import { fetchWithAuth } from './fetch-utils';
 
 // Define the API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
 
 // Define the donor query types
 export type QueryMode = 'Text' | 'Huddle' | 'Video Call';
@@ -285,7 +285,7 @@ export async function createQuery(data: Omit<DonorQuery, 'id' | 'createdAt' | 'u
 export async function fetchAdminUsers() {
   try {
     // Use the correct API base URL for users endpoint
-    const USERS_API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
+    const USERS_API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com';
     const response = await fetchWithAuth(`${USERS_API_BASE_URL}/users`);
     if (!response.ok) {
       throw new Error(`Failed to fetch admin users: ${response.status}`);

@@ -2,7 +2,7 @@ import { CallMode } from '@/types/communication';
 import { fetchWithAuth } from './fetch-utils';
 
 // Define the API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
 
 /**
  * Service for handling communication with the backend for video and audio calls
@@ -117,23 +117,6 @@ export async function updateQueryMode(queryId: number, queryMode: string) {
     return data;
   } catch (error) {
     console.error('Error updating query mode:', error);
-    throw error;
-  }
-}
-
-export async function deleteAllRooms() {
-  try {
-    console.log('Deleting all Daily.co rooms');
-    
-    const response = await fetchWithAuth(`${API_BASE_URL}/communication/rooms`, {
-      method: 'DELETE',
-    });
-    
-    const data = await response.json();
-    console.log('All rooms deleted successfully:', data);
-    return data;
-  } catch (error) {
-    console.error('Error deleting rooms:', error);
     throw error;
   }
 }
@@ -316,7 +299,10 @@ export async function acceptCallRequestById(
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (parseError) {
+      } catch (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        error
+      ) {
         try {
           const textResponse = await response.text();
           errorMessage = textResponse || errorMessage;
@@ -332,6 +318,49 @@ export async function acceptCallRequestById(
     return result;
   } catch (error) {
     console.error('Error accepting call request:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get call session details by ID
+ * @param callSessionId The ID of the call session
+ * @returns The call session details including room URL and tokens
+ */
+export async function getCallSessionById(callSessionId: number) {
+  try {
+    console.log(`Fetching call session details for ID ${callSessionId}`);
+    
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/communication/call-session/${callSessionId}`,
+      {
+        method: 'GET',
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = `Failed to fetch call session: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData && errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (error) {
+        try {
+          const textResponse = await response.text();
+          errorMessage = textResponse || errorMessage;
+        } catch (textError) {
+          console.error('Could not read response text:', textError);
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('Call session details retrieved:', result);
+    return result;
+  } catch (error) {
+    console.error('Error fetching call session details:', error);
     throw error;
   }
 } 

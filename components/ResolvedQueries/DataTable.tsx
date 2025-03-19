@@ -30,18 +30,19 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
   });
 
-  const handleRowClick = (rowData: any) => {
+  const handleRowClick = (rowData: TData) => {
     if (disableRowClick) return;
     
     if (onRowClick) {
       onRowClick(rowData);
     } else {
+      const queryData = rowData as unknown as ResolvedQueriesProps;
       openModal(
-        `query-${rowData.sid}`,
-        <QueryDetails data={rowData as ResolvedQueriesProps} />,
+        `query-${queryData.sid}`,
+        <QueryDetails data={queryData} />,
         {
-          name: rowData.donor,
-          image: `/avatars/${rowData.donorId}.jpg`,
+          name: queryData.donor,
+          image: `/avatars/${queryData.donorId}.jpg`,
           status: "Resolved"
         }
       );

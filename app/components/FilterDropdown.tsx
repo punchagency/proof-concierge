@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronDown, Calendar as CalendarIcon } from "lucide-react";
 import { createPortal } from "react-dom";
 import { FilterParams, QueryMode, QueryStatus, fetchGeneralQueries, fetchTransferredQueries, fetchResolvedQueries, GeneralQuery, TransferredQuery, ResolvedQuery } from "@/lib/api/donor-queries";
@@ -8,6 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface Option {
   value: string;
@@ -135,7 +136,6 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
   const [status, setStatus] = useState("");
   const [date, setDate] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("general"); // Default to general tab
   
   // Dynamic options that will be populated from actual data
@@ -167,9 +167,6 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
   // Get the appropriate status options based on the active tab
   const statusOptions = activeTab === 'general' ? generalStatusOptions : allStatusOptions;
 
-  const dateClass =
-    "w-[140px] rounded-[8px] border-[#C6CED6] border-[1px] px-3 py-1.5 text-[13px] font-semibold text-[#4D5B6B] bg-white hover:bg-gray-50 focus:outline-none";
-
   // Load active tab from localStorage on component mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -181,7 +178,7 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
       // Set up a mutation observer to detect tab changes
       const tabsContainer = document.querySelector('[role="tablist"]');
       if (tabsContainer) {
-        const observer = new MutationObserver((mutations) => {
+        const observer = new MutationObserver(() => {
           const activeTabElement = document.querySelector('[data-state="active"][role="tab"]');
           if (activeTabElement) {
             const tabValue = activeTabElement.getAttribute('data-value');
@@ -192,16 +189,12 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
           }
         });
         
-        observer.observe(tabsContainer, { 
-          attributes: true, 
-          childList: true, 
-          subtree: true 
-        });
+        observer.observe(tabsContainer, { attributes: true, childList: true, subtree: true });
         
         return () => observer.disconnect();
       }
     }
-  }, []);
+  }, [activeTab]);
 
   // Fetch all data to extract unique values for filter options
   useEffect(() => {
@@ -306,36 +299,29 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
     fetchFilterOptions();
   }, [isOpen]);
 
-  const applyFilters = async () => {
-    if (!isOpen) return; // Don't apply filters if dropdown is closed
-    
-    setLoading(true);
+  // Define applyFilters with useCallback to avoid dependency issues
+  const applyFilters = useCallback(async () => {
     try {
-      // Build filter params
-      const filters: FilterParams = {};
-      
-      if (test) filters.test = test;
-      if (stage) filters.stage = stage;
-      if (mode) filters.queryMode = mode as QueryMode;
-      if (device) filters.device = device;
-      if (date) filters.date = date;
-      
-      // Only add status for transferred and resolved tabs
-      if (status && activeTab !== 'general') {
-        filters.status = status as QueryStatus;
-      }
+      // Create a filters object with all the filter values
+      const filters: FilterParams = {
+        test: test || undefined,
+        stage: stage || undefined,
+        queryMode: mode as QueryMode || undefined,
+        device: device || undefined,
+        status: (status as QueryStatus) || undefined,
+        date: date || undefined
+      };
       
       console.log("Applying filters:", JSON.stringify(filters, null, 2));
       console.log("Active tab:", activeTab);
-      
-      let filteredData: GeneralQuery[] | TransferredQuery[] | ResolvedQuery[] = [];
       
       // Fetch data based on the active tab
       if (activeTab === 'general') {
         console.log("Fetching filtered general data with filters:", JSON.stringify(filters, null, 2));
         // Remove status from filters for general queries
-        const { status: _, ...generalFilters } = filters;
-        filteredData = await fetchGeneralQueries(generalFilters);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { status: statusValue, ...generalFilters } = filters;
+        const filteredData = await fetchGeneralQueries(generalFilters);
         console.log("Filtered general data received:", filteredData?.length);
         
         // Add a small delay to ensure the handler is registered
@@ -343,14 +329,15 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
           // Directly call the handler function on the window object
           if (typeof window !== 'undefined') {
             console.log("Window handlers available:", {
-              generalHandler: typeof (window as any).handleFilteredGeneralQueries === 'function',
-              transferredHandler: typeof (window as any).handleFilteredTransferredQueries === 'function',
-              resolvedHandler: typeof (window as any).handleFilteredResolvedQueries === 'function'
+              generalHandler: typeof (window as { handleFilteredGeneralQueries?: (data: GeneralQuery[]) => void }).handleFilteredGeneralQueries === 'function',
+              transferredHandler: typeof (window as { handleFilteredTransferredQueries?: (data: TransferredQuery[]) => void }).handleFilteredTransferredQueries === 'function',
+              resolvedHandler: typeof (window as { handleFilteredResolvedQueries?: (data: ResolvedQuery[]) => void }).handleFilteredResolvedQueries === 'function'
             });
             
-            if (typeof (window as any).handleFilteredGeneralQueries === 'function') {
+            const windowWithHandlers = window as { handleFilteredGeneralQueries?: (data: GeneralQuery[]) => void };
+            if (typeof windowWithHandlers.handleFilteredGeneralQueries === 'function') {
               console.log("Calling handleFilteredGeneralQueries with data length:", filteredData?.length);
-              (window as any).handleFilteredGeneralQueries(filteredData);
+              windowWithHandlers.handleFilteredGeneralQueries(filteredData);
             } else {
               console.error("handleFilteredGeneralQueries not found or not a function");
               // Fallback: reload the page to refresh the data
@@ -359,18 +346,24 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
             }
           }
         }, 100);
+        
+        // Pass filtered data to parent component if needed
+        if (onApplyFilters) {
+          onApplyFilters(filteredData);
+        }
       } else if (activeTab === 'transferred') {
         console.log("Fetching filtered transferred data with filters:", JSON.stringify(filters, null, 2));
-        filteredData = await fetchTransferredQueries(filters);
+        const filteredData = await fetchTransferredQueries(filters);
         console.log("Filtered transferred data received:", filteredData?.length);
         
         // Add a small delay to ensure the handler is registered
         setTimeout(() => {
           // Directly call the handler function on the window object
           if (typeof window !== 'undefined') {
-            if (typeof (window as any).handleFilteredTransferredQueries === 'function') {
+            const windowWithHandlers = window as { handleFilteredTransferredQueries?: (data: TransferredQuery[]) => void };
+            if (typeof windowWithHandlers.handleFilteredTransferredQueries === 'function') {
               console.log("Calling handleFilteredTransferredQueries with data length:", filteredData?.length);
-              (window as any).handleFilteredTransferredQueries(filteredData);
+              windowWithHandlers.handleFilteredTransferredQueries(filteredData);
             } else {
               console.error("handleFilteredTransferredQueries not found or not a function");
               // Fallback: reload the page to refresh the data
@@ -379,18 +372,24 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
             }
           }
         }, 100);
+        
+        // Pass filtered data to parent component if needed
+        if (onApplyFilters) {
+          onApplyFilters(filteredData);
+        }
       } else if (activeTab === 'resolved') {
         console.log("Fetching filtered resolved data with filters:", JSON.stringify(filters, null, 2));
-        filteredData = await fetchResolvedQueries(filters);
+        const filteredData = await fetchResolvedQueries(filters);
         console.log("Filtered resolved data received:", filteredData?.length);
         
         // Add a small delay to ensure the handler is registered
         setTimeout(() => {
           // Directly call the handler function on the window object
           if (typeof window !== 'undefined') {
-            if (typeof (window as any).handleFilteredResolvedQueries === 'function') {
+            const windowWithHandlers = window as { handleFilteredResolvedQueries?: (data: ResolvedQuery[]) => void };
+            if (typeof windowWithHandlers.handleFilteredResolvedQueries === 'function') {
               console.log("Calling handleFilteredResolvedQueries with data length:", filteredData?.length);
-              (window as any).handleFilteredResolvedQueries(filteredData);
+              windowWithHandlers.handleFilteredResolvedQueries(filteredData);
             } else {
               console.error("handleFilteredResolvedQueries not found or not a function");
               // Fallback: reload the page to refresh the data
@@ -399,19 +398,17 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
             }
           }
         }, 100);
-      }
-      
-      // Pass filtered data to parent component
-      if (onApplyFilters) {
-        console.log("Calling onApplyFilters with data length:", filteredData?.length);
-        onApplyFilters(filteredData || []);
+        
+        // Pass filtered data to parent component if needed
+        if (onApplyFilters) {
+          onApplyFilters(filteredData);
+        }
       }
     } catch (error) {
       console.error("Error applying filters:", error);
-    } finally {
-      setLoading(false);
+      toast.error("Failed to apply filters");
     }
-  };
+  }, [test, stage, mode, device, status, date, activeTab, onApplyFilters]);
 
   // Apply filters whenever any filter value changes
   useEffect(() => {
@@ -420,7 +417,7 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
       console.log("Filter values changed, applying filters");
       applyFilters();
     }
-  }, [test, stage, mode, device, status, date, isOpen, activeTab, testOptions.length, stageOptions.length, deviceOptions.length]);
+  }, [test, stage, mode, device, status, date, isOpen, activeTab, testOptions.length, stageOptions.length, deviceOptions.length, applyFilters]);
 
   const handleClearTest = () => {
     setTest("");

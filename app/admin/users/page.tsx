@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/auth-context';
 import ProtectedRoute from '@/lib/auth/protected-route';
 import { Button } from '@/components/ui/button';
@@ -25,13 +25,7 @@ function UserManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { token } = useAuth();
 
-  useEffect(() => {
-    if (token) {
-      fetchUsers();
-    }
-  }, [token]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await getAllUsers(token!);
@@ -42,7 +36,13 @@ function UserManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (token) {
+      fetchUsers();
+    }
+  }, [token, fetchUsers]);
 
   const handleCreateUser = async (userData: CreateUserData) => {
     try {

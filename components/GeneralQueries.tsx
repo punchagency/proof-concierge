@@ -7,6 +7,11 @@ import { fetchGeneralQueries, GeneralQuery, FilterParams } from "@/lib/api/donor
 
 export type GeneralQueriesProps = GeneralQuery;
 
+// Define proper types for the window interface
+interface CustomWindow extends Window {
+  handleFilteredGeneralQueries?: (filteredData: GeneralQueriesProps[]) => void;
+}
+
 export default function GeneralQueries() {
   const [data, setData] = useState<GeneralQueriesProps[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +54,7 @@ export default function GeneralQueries() {
     console.log("Setting handleFilteredGeneralQueries on window");
     
     // Define the handler function that will be called by FilterDropdown
-    (window as any).handleFilteredGeneralQueries = (filteredData: GeneralQueriesProps[]) => {
+    (window as CustomWindow).handleFilteredGeneralQueries = (filteredData: GeneralQueriesProps[]) => {
       console.log("Window handler called with filtered data:", filteredData?.length);
       console.log("Current data length before update:", data.length);
       console.log("Sample filtered data:", filteredData?.slice(0, 2));
@@ -59,7 +64,7 @@ export default function GeneralQueries() {
     return () => {
       // Clean up
       console.log("Cleaning up handleFilteredGeneralQueries");
-      delete (window as any).handleFilteredGeneralQueries;
+      delete (window as CustomWindow).handleFilteredGeneralQueries;
     };
   }, [data, currentFilters, handleFilteredData]); // Include all dependencies
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
 
 export async function PATCH(
   request: NextRequest,
@@ -22,11 +22,12 @@ export async function PATCH(
     console.log('Query updated successfully:', response.data);
     
     return NextResponse.json(response.data);
-  } catch (error: any) {
-    console.error('Error updating query:', error.response?.data || error.message);
+  } catch (error: unknown) {
+    const errorResponse = error as { response?: { data?: unknown, status?: number }, message?: string };
+    console.error('Error updating query:', errorResponse.response?.data || errorResponse.message);
     return NextResponse.json(
-      { error: 'Failed to update query', details: error.response?.data || error.message },
-      { status: error.response?.status || 500 }
+      { error: 'Failed to update query', details: errorResponse.response?.data || errorResponse.message },
+      { status: errorResponse.response?.status || 500 }
     );
   }
 } 
