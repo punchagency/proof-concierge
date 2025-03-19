@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useAuth } from '@/lib/auth/auth-context';
 
+// Keep the original interface with number id
 interface DockableQueryModalProps {
-  data: GeneralQueriesProps;
+  data: GeneralQueriesProps; // This has id as number
   initiallyAccepted?: boolean;
 }
 
@@ -180,7 +181,7 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
         <div className="flex flex-col gap-y-2">
           <div>
             <label className="text-[12px] text-gray-500">Session ID</label>
-            <p className="font-semibold text-[14px]">SID_{data.sid}</p>
+            <p className="font-semibold text-[14px]">SID_{data.id}</p>
           </div>
           <div className="flex flex-row gap-x-[72px]">
             <div>
@@ -329,7 +330,7 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
       </Dialog>
       
       <div className="flex-1 overflow-hidden">
-        <ChatPanel donorQueryId={data.id || parseInt(data.sid)} />
+        <ChatPanel donorQueryId={data.id || parseInt(data.id.toString())} />
       </div>
     </div>
   );

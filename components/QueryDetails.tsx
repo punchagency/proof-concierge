@@ -1,6 +1,4 @@
 import { GeneralQueriesProps } from "./GeneralQueries";
-import { QueryModeBadge } from "./GeneralQueries/Columns";
-import { QueryModeVisual } from "./QueryModeVisual";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { ChatTab } from "./chat/ChatTab";
@@ -58,10 +56,6 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
         </TabsList>
 
         <TabsContent value="details" className="flex-1 flex flex-col gap-y-2 mt-0">
-          <div>
-            <label className="text-[12px] text-gray-500">Session ID</label>
-            <p className="font-semibold text-[14px]">SID_{data.sid}</p>
-          </div>
           <div className="flex flex-row gap-x-[72px]">
             <div>
               <label className="text-[12px] text-gray-500">Donor</label>
@@ -97,32 +91,12 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
               })}
             </p>
           </div>
-          <div className="flex flex-col gap-y-[8px]">
-            <div className="flex flex-row items-center gap-x-2">
-              <label className="text-[12px] text-gray-500">Query Mode</label>
-              <QueryModeBadge mode={data.queryMode} />
-            </div>
-            <div className="w-full h-[170px] rounded-md border-[1px] border-[#AAB5C2] overflow-hidden">
-              {(data.queryMode === "Huddle" || data.queryMode === "Video Call") && (
-                <QueryModeVisual
-                  mode={data.queryMode}
-                  profileData={{
-                    name: data.donor,
-                    image: `/images/${data.donorId}.jpg`,
-                    status: "Available"
-                  }}
-                  userId={parseInt(data.donorId)}
-                  queryId={data.id || parseInt(data.sid)}
-                />
-              )}
-            </div>
-          </div>
 
           {/* Action Buttons */}
           <div className="flex justify-between gap-4 mt-auto">
             <button
               className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-              onClick={() => console.log("Transfer clicked", data.sid)}
+              onClick={() => console.log("Transfer clicked", data.id)}
             >
               Transfer
             </button>
@@ -146,8 +120,7 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
         <TabsContent value="chat" className="flex-1 h-full mt-0">
           <ChatTab 
             donorQuery={{
-              id: data.id || parseInt(data.sid),
-              sid: data.sid,
+              id: data.id || parseInt(data.id.toString()),
               donor: data.donor,
               donorId: data.donorId
             }} 

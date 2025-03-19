@@ -606,7 +606,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                   )}
                 >
                   {message.content}
-                  <span className="ml-2 inline-flex items-center float-right text-[10px] text-gray-400 mt-1 ml-1">
+                  <span className="ml-2 inline-flex items-center float-right text-[10px] text-gray-400 mt-1">
                     {formatTime(message.createdAt)}
                   </span>
                 </div>

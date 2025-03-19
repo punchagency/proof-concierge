@@ -68,6 +68,12 @@ export default function GeneralQueries() {
     };
   }, [data, currentFilters, handleFilteredData]); // Include all dependencies
 
+  // Transform the data to match the DataTable's required shape
+  const transformedData = data.map(item => ({
+    ...item,
+    id: String(item.id) // Convert id from number to string
+  }));
+
   return (
     <div className="h-full w-full">
       {loading ? (
@@ -87,7 +93,7 @@ export default function GeneralQueries() {
               </button>
             </div>
           )}
-          <DataTable columns={columns} data={data} />
+          <DataTable columns={columns} data={transformedData} />
         </>
       )}
     </div>

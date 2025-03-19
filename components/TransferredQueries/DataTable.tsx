@@ -38,7 +38,7 @@ export function DataTable<TData, TValue>({
     } else {
       const queryData = rowData as unknown as TransferredQueriesProps;
       openModal(
-        `query-${queryData.sid}`,
+        `query-${queryData.id}`,
         <QueryDetails data={queryData} />,
         {
           name: queryData.donor,

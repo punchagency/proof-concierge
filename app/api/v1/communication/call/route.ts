@@ -27,19 +27,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { roomName: string } }) {
+export async function DELETE(request: NextRequest) {
   try {
-    const roomName = params.roomName;
+    const { searchParams } = new URL(request.url);
+    const roomName = searchParams.get('roomName');
     
-    // Log the request for debugging
+    if (!roomName) {
+      return NextResponse.json({ error: 'Room name is required' }, { status: 400 });
+    }
+
     console.log('Deleting room:', roomName);
-    
-    // Forward the request to the backend
     const response = await axios.delete(`${API_BASE_URL}/communication/call/${roomName}`);
-    
-    // Log the response for debugging
+
     console.log('Room deleted successfully:', response.data);
-    
     return NextResponse.json(response.data);
   } catch (error: unknown) {
     const errorResponse = error as { response?: { data?: unknown, status?: number }, message?: string };
@@ -49,4 +49,4 @@ export async function DELETE(request: NextRequest, { params }: { params: { roomN
       { status: errorResponse.response?.status || 500 }
     );
   }
-} 
+}

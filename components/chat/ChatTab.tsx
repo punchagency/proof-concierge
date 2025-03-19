@@ -11,14 +11,12 @@ import { CallMode } from '@/types/communication';
 
 interface DonorQuery {
   id: number;
-  sid: string;
   donor: string;
   donorId: string;
   test?: string;
   stage?: string;
   status?: string;
   device?: string;
-  queryMode?: string;
   createdAt?: string;
   updatedAt?: string;
 }

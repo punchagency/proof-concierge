@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Use the public environment variable
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com';
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { roomName: string } }
-) {
+export async function DELETE(request: NextRequest) {
   try {
-    const { roomName } = params;
-    
+    const { searchParams } = new URL(request.url);
+    const roomName = searchParams.get('roomName');
+
     if (!roomName) {
       return NextResponse.json(
         { error: 'Room name is required' },
@@ -20,7 +17,7 @@ export async function DELETE(
     // Get the authorization header from the request
     const authHeader = request.headers.get('authorization');
     
-    // Forward the request to the backend
+    // Construct the backend URL for deletion
     const backendUrl = `${BACKEND_URL.replace(/\/+$/, '')}/api/v1/communication/call/${roomName}`;
     console.log('Forwarding delete request to:', backendUrl);
     
@@ -41,7 +38,7 @@ export async function DELETE(
       );
     }
     
-    // Return the response
+    // Return the response with no content
     return new NextResponse(null, { status: response.status });
   } catch (error) {
     console.error('Error proxying call deletion request:', error);
@@ -50,4 +47,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

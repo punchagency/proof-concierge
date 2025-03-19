@@ -3,13 +3,18 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest) {
   try {
-    // Await params to fix the error
-    const id = await params.id;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID is required' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     
     // Log the request for debugging
@@ -30,4 +35,4 @@ export async function PATCH(
       { status: errorResponse.response?.status || 500 }
     );
   }
-} 
+}

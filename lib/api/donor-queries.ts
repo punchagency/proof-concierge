@@ -10,12 +10,10 @@ export type QueryStatus = 'In Progress' | 'Pending Reply' | 'Resolved' | 'Transf
 
 export interface DonorQuery {
   id: number;
-  sid: string;
   donor: string;
   donorId: string;
   test: string;
   stage: string;
-  queryMode: QueryMode;
   device: string;
   createdAt: string;
   updatedAt: string;

@@ -1,13 +1,16 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { GeneralQueriesProps } from "./index";
+import { GeneralQueriesProps as BaseGeneralQueriesProps } from "./index";
 import { cn } from "@/lib/utils";
 import Text from "@/icons/Text";
 import VideoCall from "@/icons/VideoCall";
 import Huddle from "@/icons/Huddle";
 import { QueryActions } from "../QueryActions";
 import { useRouter } from "next/navigation";
+
+// Define a type that matches the transformed data with string id
+type TransformedGeneralQueriesProps = Omit<BaseGeneralQueriesProps, 'id'> & { id: string };
 
 export const QueryModeBadge = ({ mode }: { mode: string }) => {
   const badgeStyles =
@@ -258,7 +261,7 @@ const DeviceBadge = ({ device }: { device: string }) => {
   );
 };
 
-const ActionCell = ({ query }: { query: GeneralQueriesProps }) => {
+const ActionCell = ({ query }: { query: TransformedGeneralQueriesProps }) => {
   const router = useRouter();
 
   const handleActionComplete = () => {
@@ -269,10 +272,16 @@ const ActionCell = ({ query }: { query: GeneralQueriesProps }) => {
     e.stopPropagation();
   };
 
+  // Convert the string id back to number for the QueryActions component
+  const queryWithNumberId = {
+    ...query,
+    id: Number(query.id)
+  };
+
   return (
     <div onClick={handleClick}>
       <QueryActions
-        query={query}
+        query={queryWithNumberId}
         onActionComplete={handleActionComplete}
         showCommunicationButtons={false}
       />
@@ -280,7 +289,7 @@ const ActionCell = ({ query }: { query: GeneralQueriesProps }) => {
   );
 };
 
-export const columns: ColumnDef<GeneralQueriesProps>[] = [
+export const columns: ColumnDef<TransformedGeneralQueriesProps>[] = [
   {
     accessorKey: "donor",
     header: "Donor",

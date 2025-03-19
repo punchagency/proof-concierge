@@ -7,7 +7,7 @@ import { CallMode } from "@/types/communication";
 import { useDockableModal } from "./dockable-modal-provider";
 import { QueryDetails } from "../QueryDetails";
 import { useAtom } from "jotai";
-import { callStateAtom, startCallAtom, endCallAtom } from "@/lib/atoms/callState";
+import { callStateAtom, startCallAtom, endCallAtom, isMutedAtom, isVideoOffAtom, isScreenSharingAtom } from "@/lib/atoms/callState";
 
 interface ProfileData {
   name: string;
@@ -19,9 +19,23 @@ interface CallManagerContextType {
   startVideoCall: (queryId: number, userId: number, profileData: ProfileData) => void;
   startAudioCall: (queryId: number, userId: number, profileData: ProfileData) => void;
   endCurrentCall: () => void;
+  endCall: (roomName: string) => void;
+  toggleMute: () => void;
+  toggleVideo: () => void;
+  toggleScreenShare: () => void;
   isInCall: boolean;
+  isMuted: boolean;
+  isVideoOff: boolean;
+  isScreenSharing: boolean;
   currentCallType: "video" | "audio" | null;
   currentCallUser: ProfileData | null;
+  currentCallData: {
+    roomName: string;
+    roomUrl: string;
+    roomToken: string;
+    queryId: number;
+    userId: number;
+  } | null;
 }
 
 const CallManagerContext = createContext<CallManagerContextType | undefined>(undefined);
@@ -39,9 +53,48 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
   const [callState] = useAtom(callStateAtom);
   const [, startCall] = useAtom(startCallAtom);
   const [, endCall] = useAtom(endCallAtom);
+  const [, setIsMuted] = useAtom(isMutedAtom);
+  const [, setIsVideoOff] = useAtom(isVideoOffAtom);
+  const [, setIsScreenSharing] = useAtom(isScreenSharingAtom);
   
   const [currentCallUser, setCurrentCallUser] = React.useState<ProfileData | null>(null);
   const [currentQueryId, setCurrentQueryId] = React.useState<number | null>(null);
+
+  // Function to toggle mute state
+  const toggleMute = useCallback(() => {
+    setIsMuted(!callState.isMuted);
+  }, [callState.isMuted, setIsMuted]);
+
+  // Function to toggle video state
+  const toggleVideo = useCallback(() => {
+    setIsVideoOff(!callState.isVideoOff);
+  }, [callState.isVideoOff, setIsVideoOff]);
+
+  // Function to toggle screen sharing state
+  const toggleScreenShare = useCallback(() => {
+    setIsScreenSharing(!callState.isScreenSharing);
+  }, [callState.isScreenSharing, setIsScreenSharing]);
+
+  // Helper function to end a specific call by roomName
+  const endCallByRoomName = useCallback(async (roomName: string) => {
+    try {
+      await endCallApi(roomName);
+      endCall();
+      
+      if (currentCallUser) {
+        toast.success(`Call with ${currentCallUser.name} ended`);
+        setCurrentCallUser(null);
+      }
+      
+      if (currentQueryId) {
+        await updateQueryMode(currentQueryId, "Text");
+        setCurrentQueryId(null);
+      }
+    } catch (error) {
+      console.error("Error ending call:", error);
+      toast.error("Failed to end call. Please try again.");
+    }
+  }, [endCall, currentCallUser, currentQueryId]);
 
   // Function to start a video call
   const startVideoCall = useCallback(async (queryId: number, userId: number, profileData: ProfileData) => {
@@ -79,7 +132,6 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
         <QueryDetails 
           data={{
             id: queryId,
-            sid: queryId.toString(),
             donor: profileData.name,
             donorId: userId.toString(),
             createdAt: new Date().toISOString(),
@@ -88,7 +140,6 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
             device: "Device",
             stage: "Stage",
             dateNdTime: new Date().toISOString(),
-            queryMode: "Video Call",
             status: "In Progress"
           }} 
         />,
@@ -136,7 +187,6 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
         <QueryDetails 
           data={{
             id: queryId,
-            sid: queryId.toString(),
             donor: profileData.name,
             donorId: userId.toString(),
             createdAt: new Date().toISOString(),
@@ -145,7 +195,6 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
             device: "Device",
             stage: "Stage",
             dateNdTime: new Date().toISOString(),
-            queryMode: "Huddle",
             status: "In Progress"
           }} 
         />,
@@ -192,9 +241,23 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
         startVideoCall,
         startAudioCall,
         endCurrentCall,
+        endCall: endCallByRoomName,
+        toggleMute,
+        toggleVideo,
+        toggleScreenShare,
         isInCall: callState.isActive,
+        isMuted: callState.isMuted,
+        isVideoOff: callState.isVideoOff,
+        isScreenSharing: callState.isScreenSharing,
         currentCallType: callState.mode === CallMode.VIDEO ? "video" : callState.mode === CallMode.AUDIO ? "audio" : null,
         currentCallUser,
+        currentCallData: callState.isActive && callState.roomName && callState.roomUrl && callState.roomToken && callState.queryId && callState.userId ? {
+          roomName: callState.roomName,
+          roomUrl: callState.roomUrl,
+          roomToken: callState.roomToken,
+          queryId: callState.queryId,
+          userId: callState.userId
+        } : null,
       }}
     >
       {children}

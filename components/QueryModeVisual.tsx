@@ -27,7 +27,8 @@ export function QueryModeVisual({ mode, profileData, userId = 1, queryId = 1 }: 
     isMuted,
     isVideoOff,
     isScreenSharing,
-    currentCallData
+    currentCallData,
+    endCurrentCall
   } = useCallManager();
   const [imageError, setImageError] = useState(false);
 
@@ -49,6 +50,8 @@ export function QueryModeVisual({ mode, profileData, userId = 1, queryId = 1 }: 
   const handleEndCall = () => {
     if (currentCallData?.roomName) {
       endCall(currentCallData.roomName);
+    } else {
+      endCurrentCall();
     }
   };
 

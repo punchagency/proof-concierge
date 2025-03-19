@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-table";
 import { useDockableModal } from "../providers/dockable-modal-provider";
 import { QueryDetails } from "../QueryDetails";
+import { GeneralQueriesProps } from "../GeneralQueries";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -16,7 +17,7 @@ interface DataTableProps<TData, TValue> {
   disableRowClick?: boolean;
 }
 
-export function DataTable<TData extends { sid: string; donor: string; donorId: string }, TValue>({
+export function DataTable<TData extends { id: string; donor: string; donorId: string }, TValue>({
   columns,
   data,
   onRowClick,
@@ -35,9 +36,14 @@ export function DataTable<TData extends { sid: string; donor: string; donorId: s
     if (onRowClick) {
       onRowClick(rowData);
     } else {
+      const queryData = {
+        ...rowData,
+        id: Number(rowData.id)
+      } as unknown as GeneralQueriesProps;
+
       openModal(
-        `query-${rowData.sid}`,
-        <QueryDetails data={rowData} />,
+        `query-${rowData.id}`,
+        <QueryDetails data={queryData} />,
         {
           name: rowData.donor,
           image: `/avatars/${rowData.donorId}.jpg`,
