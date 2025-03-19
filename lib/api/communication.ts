@@ -299,10 +299,7 @@ export async function acceptCallRequestById(
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        error
-      ) {
+      } catch {
         try {
           const textResponse = await response.text();
           errorMessage = textResponse || errorMessage;
@@ -345,7 +342,7 @@ export async function getCallSessionById(callSessionId: number) {
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (error) {
+      } catch {
         try {
           const textResponse = await response.text();
           errorMessage = textResponse || errorMessage;

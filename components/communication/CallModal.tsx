@@ -7,7 +7,6 @@ import { useAtom } from 'jotai';
 import { callStateAtom, endCallAtom } from '@/lib/atoms/callState';
 import { CallUI } from './CallUI';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/lib/auth/auth-context';
 
 interface CallModalProps {
   isOpen: boolean;
@@ -30,7 +29,6 @@ export function CallModal({
 }: CallModalProps) {
   const [callState, setCallState] = useAtom(callStateAtom);
   const [, endCall] = useAtom(endCallAtom);
-  const { user } = useAuth();
   const [isConnecting, setIsConnecting] = useState(true);
 
   const handleLeave = () => {

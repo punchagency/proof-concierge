@@ -21,26 +21,17 @@ import {
   MonitorUp,
   Users,
   Maximize2,
-  UserPlus,
   ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  callStateAtom,
   isMutedAtom,
   isVideoOffAtom,
   isScreenSharingAtom,
   participantCountAtom,
   endCallAtom,
 } from "@/lib/atoms/callState";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import {
   Tooltip,
   TooltipContent,
@@ -74,19 +65,21 @@ function ParticipantThumbnail({
     if (!participant) return;
     
     // Initialize speaking detector
-    let speakingCheckInterval: NodeJS.Timeout;
-    
-    const checkIfSpeaking = () => {
-      // Use type assertion to access Daily's participant properties
-      const p = participant as any;
+    const speakingCheckInterval = setInterval(() => {
+      // Access Daily's participant properties with appropriate typing
+      // Use type assertion with a more specific interface instead of any
+      interface DailyParticipantWithAudio {
+        audio: boolean;
+        audio_activity?: number;
+      }
+      
+      const p = participant as unknown as DailyParticipantWithAudio;
       if (p && p.audio) {
         // Check if participant is speaking
-        const isActive = p.audio_activity > 20 || false;
+        const isActive = (p.audio_activity || 0) > 20;
         setIsSpeaking(isActive);
       }
-    };
-    
-    speakingCheckInterval = setInterval(checkIfSpeaking, 300);
+    }, 300);
     
     return () => {
       clearInterval(speakingCheckInterval);
@@ -206,6 +199,12 @@ function ParticipantDropdown() {
   const [participantCount] = useAtom(participantCountAtom);
   const [speakingStates, setSpeakingStates] = useState<Record<string, boolean>>({});
   
+  // Define interface for participant with audio activity
+  interface DailyParticipantWithAudio {
+    audio: boolean;
+    audio_activity?: number;
+  }
+  
   // Update speaking states periodically
   useEffect(() => {
     if (!daily) return;
@@ -217,10 +216,10 @@ function ParticipantDropdown() {
       const newSpeakingStates: Record<string, boolean> = {};
       
       Object.entries(participants).forEach(([id, p]) => {
-        // Type assertion to access audio_activity
-        const participant = p as any;
+        // Type assertion with more specific interface
+        const participant = p as unknown as DailyParticipantWithAudio;
         if (participant && participant.audio) {
-          newSpeakingStates[id] = participant.audio_activity > 20 || false;
+          newSpeakingStates[id] = (participant.audio_activity || 0) > 20;
         }
       });
       
@@ -593,7 +592,7 @@ export function CallUI({ onLeave }: CallUIProps) {
       {/* Main content area with video/screen shares */}
       <div className={cn(
         "flex-1 overflow-hidden flex flex-col",
-        isFullscreen && !isAnyScreenSharing && "fullscreen-bg-pattern"
+        !isAnyScreenSharing && "fullscreen-bg-pattern"
       )}>
         {/* Screen share with participant thumbnails overlay */}
         {isAnyScreenSharing ? (
@@ -623,47 +622,76 @@ export function CallUI({ onLeave }: CallUIProps) {
             "px-1 pt-1 pb-0.5 flex-1 flex relative",
             isFullscreen && "flex-col"
           )}>
-            {/* Centered logo or brand indicator when in fullscreen */}
-            {isFullscreen && (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center relative">
-                  <div className="absolute -z-10 w-[400px] h-[400px] -top-[200px] -left-[200px] bg-primary/5 rounded-full blur-3xl opacity-50 blob-animation" />
-                  <div className="absolute -z-10 w-[300px] h-[300px] -bottom-[150px] -right-[150px] bg-blue-400/5 rounded-full blur-3xl opacity-50 blob-animation" style={{ animationDelay: "-10s" }} />
-                  
-                  <div className="gradient-border w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" className="w-10 h-10 opacity-80">
-                      <defs>
-                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#4f46e5" />
-                          <stop offset="100%" stopColor="#06b6d4" />
-                        </linearGradient>
-                      </defs>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  
-                  <h3 className="text-gray-700 font-semibold text-lg mb-1">Waiting for screen share</h3>
-                  <p className="text-gray-500 text-sm max-w-[300px] mx-auto">
-                    You can share your screen using the controls below or wait for someone else to share
-                  </p>
-                  
-                  <div className="mt-6 flex justify-center">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="rounded-full text-xs gap-1.5 border-primary/20 text-primary hover:bg-primary/5"
-                      onClick={toggleScreenShare}
-                    >
-                      <MonitorUp className="h-3.5 w-3.5" />
-                      Share your screen
-                    </Button>
-                  </div>
-                </div>
+            {/* Centered content when no screen is shared */}
+            <div className={cn(
+              "absolute inset-0 flex items-center justify-center",
+              isFullscreen ? "z-0" : "z-0"
+            )}>
+              <div className={cn(
+                "text-center",
+                !isFullscreen && "scale-75 opacity-60"
+              )}>
+                {isFullscreen ? (
+                  <>
+                    {/* Full content for fullscreen mode */}
+                    <div className="absolute -z-10 w-[400px] h-[400px] -top-[200px] -left-[200px] bg-primary/5 rounded-full blur-3xl opacity-50 blob-animation" />
+                    <div className="absolute -z-10 w-[300px] h-[300px] -bottom-[150px] -right-[150px] bg-blue-400/5 rounded-full blur-3xl opacity-50 blob-animation" style={{ animationDelay: "-10s" }} />
+                    
+                    <div className="gradient-border w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" className="w-10 h-10 opacity-80">
+                        <defs>
+                          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#4f46e5" />
+                            <stop offset="100%" stopColor="#06b6d4" />
+                          </linearGradient>
+                        </defs>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    
+                    <h3 className="text-gray-700 font-semibold text-lg mb-1">Waiting for screen share</h3>
+                    <p className="text-gray-500 text-sm max-w-[300px] mx-auto">
+                      You can share your screen using the controls below or wait for someone else to share
+                    </p>
+                    
+                    <div className="mt-6 flex justify-center">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full text-xs gap-1.5 border-primary/20 text-primary hover:bg-primary/5"
+                        onClick={toggleScreenShare}
+                      >
+                        <MonitorUp className="h-3.5 w-3.5" />
+                        Share your screen
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Simplified content for normal mode */}
+                    <div className="absolute -z-10 w-[200px] h-[200px] -top-[80px] -left-[80px] bg-primary/5 rounded-full blur-3xl opacity-30 blob-animation" />
+                    
+                    <div className="gradient-border w-16 h-16 mx-auto mb-2 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" className="w-8 h-8 opacity-70">
+                        <defs>
+                          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#4f46e5" />
+                            <stop offset="100%" stopColor="#06b6d4" />
+                          </linearGradient>
+                        </defs>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    
+                    <p className="text-gray-500 text-xs font-medium">No screen shared</p>
+                  </>
+                )}
               </div>
-            )}
+            </div>
+            
             {participantIds.length === 1 ? (
               /* Single participant - bottom-right aligned with responsive size */
-              <div className="flex items-end justify-end w-full pb-2 pr-2">
+              <div className="flex items-end justify-end w-full pb-2 pr-2 z-10">
                 <div className={cn(
                   isFullscreen ? "w-[180px] h-[120px]" : "w-[150px] h-auto aspect-video"
                 )}>
@@ -675,7 +703,7 @@ export function CallUI({ onLeave }: CallUIProps) {
               </div>
             ) : (
               /* Two participants - bottom-right aligned with responsive sizing */
-              <div className="w-full flex items-end justify-end pb-2 pr-2">
+              <div className="w-full flex items-end justify-end pb-2 pr-2 z-10">
                 <div className={cn(
                   "flex gap-2",
                   isFullscreen ? "max-w-[420px]" : "max-w-full"

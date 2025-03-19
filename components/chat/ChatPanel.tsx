@@ -16,7 +16,10 @@ import { useCallManager } from "@/components/providers/CallManagerProvider";
 import { useAtom } from "jotai";
 import { callStateAtom, startCallAtom } from "@/lib/atoms/callState";
 import { CallModal } from "../communication/CallModal";
-import { acceptCallRequestById, getCallSessionById } from "@/lib/api/communication";
+import {
+  acceptCallRequestById,
+  getCallSessionById,
+} from "@/lib/api/communication";
 import { CallMode } from "@/types/communication";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +57,7 @@ interface ExtendedChatMessage extends ChatMessage {
   };
   callMode?: "VIDEO" | "AUDIO";
   callRequestId?: number;
-  
+
   // UI-related properties for grouping and display
   isFirstInGroup?: boolean;
   isLastInGroup?: boolean;
@@ -80,43 +83,26 @@ interface MessageData {
   callRequestId?: number;
 }
 
-// Define interface for call response
-interface CallAcceptResponse {
-  success: boolean;
-  message?: string;
-  data?: {
-    roomUrl?: string;
-    tokens?: {
-      admin?: string;
-    };
-    adminToken?: string;
-    callSession?: {
-      roomUrl: string;
-      roomToken: string;
-    };
-  };
-}
-
 // Function to construct a valid Daily.co room URL
 const constructDailyUrl = (roomName: string) => {
   // Make sure we have a valid room name
-  if (!roomName) return '';
-  
+  if (!roomName) return "";
+
   // If it already includes protocol, return as is
-  if (roomName.startsWith('http')) return roomName;
-  
+  if (roomName.startsWith("http")) return roomName;
+
   // If it's a full dailyco domain
-  if (roomName.includes('daily.co/')) {
+  if (roomName.includes("daily.co/")) {
     return `https://${roomName}`;
   }
-  
+
   // Handle the case of roomName like "prooftest/xyz123"
-  if (roomName.startsWith('prooftest/')) {
+  if (roomName.startsWith("prooftest/")) {
     // Extract the actual room name part after prooftest/
-    const actualRoomName = roomName.replace('prooftest/', '');
+    const actualRoomName = roomName.replace("prooftest/", "");
     return `https://prooftest.daily.co/${actualRoomName}`;
   }
-  
+
   // Add full URL with domain
   return `https://prooftest.daily.co/${roomName}`;
 };
@@ -143,107 +129,110 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
   } | null>(null);
 
   // Define fetchMessages with useCallback to avoid dependency issues
-  const fetchMessages = useCallback(async (showLoading = true) => {
-    if (!donorQueryId) return;
+  const fetchMessages = useCallback(
+    async (showLoading = true) => {
+      if (!donorQueryId) return;
 
-    try {
-      if (showLoading) {
-        setIsLoading(true);
-      }
-
-      // Get all messages using the new endpoint
-      const messagesData = await getQueryMessages(donorQueryId);
-      console.log("Raw messages data from API:", messagesData);
-      
-      // Check for call-related messages specifically
-      const callMessages = messagesData.filter(msg => 
-        msg.messageType === "CALL_STARTED" || 
-        msg.messageType === "SYSTEM" || 
-        msg.callSessionId || 
-        msg.callRequestId
-      );
-      
-      if (callMessages.length > 0) {
-        console.log("Call-related messages found:", callMessages);
-      }
-
-      // Process the messages
-      const formattedMessages: ExtendedChatMessage[] = [];
-      
-      // Loop through each message and format it
-      for (const msg of messagesData) {
-        let formattedMessage: ExtendedChatMessage;
-        
-        // Format call-related messages
-        if (msg.messageType === "CALL_STARTED") {
-          const callType = msg.callMode?.toLowerCase() || "unknown";
-          const callText = `${callType === "video" ? "📹" : "📞"} ${
-            msg.sender?.name || "Admin"
-          } started a ${callType} call`;
-
-          formattedMessage = {
-            ...msg,
-            content: msg.content || callText,
-            isFromAdmin: true,
-            sender: msg.sender || {
-              id: msg.senderId || -1,
-              name: "Admin",
-              role: "admin",
-            },
-          } as ExtendedChatMessage;
+      try {
+        if (showLoading) {
+          setIsLoading(true);
         }
-        // Format system messages (call requests)
-        else if (msg.messageType === "SYSTEM") {
-          // These are typically system-generated messages
-          formattedMessage = {
-            ...msg,
-            // Call requests are typically from the user, not admin
-            isFromAdmin: msg.isFromAdmin || false,
-            sender: msg.sender || {
-              id: msg.senderId || -1,
-              name: msg.isFromAdmin ? "Admin" : "User",
-              role: msg.isFromAdmin ? "admin" : "user",
-            },
-          } as ExtendedChatMessage;
+
+        // Get all messages using the new endpoint
+        const messagesData = await getQueryMessages(donorQueryId);
+        console.log("Raw messages data from API:", messagesData);
+
+        // Check for call-related messages specifically
+        const callMessages = messagesData.filter(
+          (msg) =>
+            msg.messageType === "CALL_STARTED" ||
+            msg.messageType === "SYSTEM" ||
+            msg.callSessionId ||
+            msg.callRequestId
+        );
+
+        if (callMessages.length > 0) {
+          console.log("Call-related messages found:", callMessages);
         }
-        else {
-          // Determine if the message is from an admin
-          const isFromAdmin =
-            msg.isFromAdmin || msg.sender?.role?.toLowerCase() === "admin";
 
-          formattedMessage = {
-            ...msg,
-            isFromAdmin,
-            sender: msg.sender || {
-              id: msg.senderId || -1,
-              name: isFromAdmin ? "Admin" : "User",
-              role: isFromAdmin ? "admin" : "user",
-            },
-          } as ExtendedChatMessage;
+        // Process the messages
+        const formattedMessages: ExtendedChatMessage[] = [];
+
+        // Loop through each message and format it
+        for (const msg of messagesData) {
+          let formattedMessage: ExtendedChatMessage;
+
+          // Format call-related messages
+          if (msg.messageType === "CALL_STARTED") {
+            const callType = msg.callMode?.toLowerCase() || "unknown";
+            const callText = `${callType === "video" ? "📹" : "📞"} ${
+              msg.sender?.name || "Admin"
+            } started a ${callType} call`;
+
+            formattedMessage = {
+              ...msg,
+              content: msg.content || callText,
+              isFromAdmin: true,
+              sender: msg.sender || {
+                id: msg.senderId || -1,
+                name: "Admin",
+                role: "admin",
+              },
+            } as ExtendedChatMessage;
+          }
+          // Format system messages (call requests)
+          else if (msg.messageType === "SYSTEM") {
+            // These are typically system-generated messages
+            formattedMessage = {
+              ...msg,
+              // Call requests are typically from the user, not admin
+              isFromAdmin: msg.isFromAdmin || false,
+              sender: msg.sender || {
+                id: msg.senderId || -1,
+                name: msg.isFromAdmin ? "Admin" : "User",
+                role: msg.isFromAdmin ? "admin" : "user",
+              },
+            } as ExtendedChatMessage;
+          } else {
+            // Determine if the message is from an admin
+            const isFromAdmin =
+              msg.isFromAdmin || msg.sender?.role?.toLowerCase() === "admin";
+
+            formattedMessage = {
+              ...msg,
+              isFromAdmin,
+              sender: msg.sender || {
+                id: msg.senderId || -1,
+                name: isFromAdmin ? "Admin" : "User",
+                role: isFromAdmin ? "admin" : "user",
+              },
+            } as ExtendedChatMessage;
+          }
+
+          formattedMessages.push(formattedMessage);
         }
-        
-        formattedMessages.push(formattedMessage);
-      }
 
-      // Sort messages by timestamp
-      const sortedMessages = formattedMessages.sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
+        // Sort messages by timestamp
+        const sortedMessages = formattedMessages.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
 
-      console.log("Formatted messages:", sortedMessages);
-      setMessages(sortedMessages);
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-      if (showLoading) {
-        toast.error("Failed to load messages");
+        console.log("Formatted messages:", sortedMessages);
+        setMessages(sortedMessages);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+        if (showLoading) {
+          toast.error("Failed to load messages");
+        }
+      } finally {
+        if (showLoading) {
+          setIsLoading(false);
+        }
       }
-    } finally {
-      if (showLoading) {
-        setIsLoading(false);
-      }
-    }
-  }, [donorQueryId]);
+    },
+    [donorQueryId]
+  );
 
   // Fetch messages on component mount and when donorQueryId changes
   useEffect(() => {
@@ -320,7 +309,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
       }
 
       const callData = await response.json();
-      
+
       // Validate call data
       if (!callData.data?.roomUrl || !callData.data?.adminToken) {
         throw new Error("Invalid call data received from server");
@@ -331,7 +320,9 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
       const roomUrl = callData.data.roomUrl;
       const roomToken = callData.data.adminToken;
       // Extract room name from URL safely
-      const roomName = roomUrl.includes('/') ? roomUrl.split("/").pop() || "" : "";
+      const roomName = roomUrl.includes("/")
+        ? roomUrl.split("/").pop() || ""
+        : "";
 
       // Update internal call data state
       setCurrentCallData({
@@ -339,7 +330,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         roomToken,
         mode: "video",
       });
-      
+
       // Initialize the call using Jotai
       startCall({
         queryId: donorQueryId,
@@ -349,13 +340,16 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         roomToken,
         roomName,
       });
-      
+
       setIsCallModalOpen(true);
       console.log("Call modal opened with current state:", callState);
       await fetchMessages(false);
     } catch (error) {
       console.error("Error starting video call:", error);
-      toast.error("Failed to start video call: " + (error instanceof Error ? error.message : "Unknown error"));
+      toast.error(
+        "Failed to start video call: " +
+          (error instanceof Error ? error.message : "Unknown error")
+      );
     } finally {
       setIsStartingVideoCall(false);
     }
@@ -406,7 +400,9 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
       const roomUrl = callData.data.roomUrl;
       const roomToken = callData.data.adminToken;
       // Extract room name from URL safely
-      const roomName = roomUrl.includes('/') ? roomUrl.split("/").pop() || "" : "";
+      const roomName = roomUrl.includes("/")
+        ? roomUrl.split("/").pop() || ""
+        : "";
 
       // Update internal call data state
       setCurrentCallData({
@@ -414,7 +410,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         roomToken,
         mode: "audio",
       });
-      
+
       // Initialize the call using Jotai
       startCall({
         queryId: donorQueryId,
@@ -424,13 +420,16 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         roomToken,
         roomName,
       });
-      
+
       setIsCallModalOpen(true);
       console.log("Call modal opened with current state:", callState);
       await fetchMessages(false);
     } catch (error) {
       console.error("Error starting audio call:", error);
-      toast.error("Failed to start audio call: " + (error instanceof Error ? error.message : "Unknown error"));
+      toast.error(
+        "Failed to start audio call: " +
+          (error instanceof Error ? error.message : "Unknown error")
+      );
     } finally {
       setIsStartingAudioCall(false);
     }
@@ -461,35 +460,28 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
 
   const MessageItem = ({ message }: { message: ExtendedChatMessage }) => {
     // Get sender information for display
-    const senderName = message.sender?.name || (message.isFromAdmin ? 'Admin' : 'Donor');
-    const messageDate = new Date(message.createdAt);
-    const today = new Date();
-    const isToday = messageDate.toDateString() === today.toDateString();
-    
-    // Process markdown links in content for SYSTEM messages
-    const processContent = (content: string) => {
-      if (!content) return '';
-      
-      // Process markdown links [text](url)
-      const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-      return content.replace(linkRegex, '<a href="$2" class="text-primary underline hover:text-primary/80">$1</a>');
-    };
-    
+    const senderName =
+      message.sender?.name || (message.isFromAdmin ? "Admin" : "Donor");
+
     // Check if message is a call request with specific text
-    const isCallRequest = message.messageType === "SYSTEM" && 
-      message.content && 
-      (message.content.includes("requested a") || message.content.includes("Click here to join"));
-      
+    const isCallRequest =
+      message.messageType === "SYSTEM" &&
+      message.content &&
+      (message.content.includes("requested a") ||
+        message.content.includes("Click here to join"));
+
     // Try to extract call request ID from content if not directly available
     let extractedCallRequestId = message.callRequestId;
     if (isCallRequest && !extractedCallRequestId && message.content) {
       // Look for patterns like "Call request ID: 123" or "requestId: 123"
-      const requestIdMatch = message.content.match(/(?:call request|request|call)(?:\s+)?(?:id|ID)(?:\s*)?[:=](?:\s*)(\d+)/i);
+      const requestIdMatch = message.content.match(
+        /(?:call request|request|call)(?:\s+)?(?:id|ID)(?:\s*)?[:=](?:\s*)(\d+)/i
+      );
       if (requestIdMatch && requestIdMatch[1]) {
         extractedCallRequestId = parseInt(requestIdMatch[1], 10);
       }
     }
-    
+
     // Debug call requests
     if (isCallRequest) {
       console.log("Found call request message:", {
@@ -499,46 +491,73 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         callMode: message.callMode,
         callRequestId: message.callRequestId,
         extractedCallRequestId,
-        isDonorRequest: message.content?.toLowerCase().includes("donor requested")
+        isDonorRequest: message.content
+          ?.toLowerCase()
+          .includes("donor requested"),
       });
     }
-    
+
     // Additional check for donor identification, examining multiple properties
-    const isDonorMessage = message.isFromAdmin === false || 
-      (message.content && message.content.toLowerCase().includes("donor requested"));
-      
+    const isDonorMessage =
+      message.isFromAdmin === false ||
+      (message.content &&
+        message.content.toLowerCase().includes("donor requested"));
+
     // More specific check for donor call requests
-    const isDonorCallRequest = isCallRequest && 
+    const isDonorCallRequest =
+      isCallRequest &&
       isDonorMessage &&
       !message.content.includes("✅ ACCEPTED");
-      
+
     // Try to extract call mode if not available
     let callModeFromContent = message.callMode;
     if (isCallRequest && !callModeFromContent && message.content) {
-      if (message.content.includes("VIDEO call") || message.content.toLowerCase().includes("video call")) {
+      if (
+        message.content.includes("VIDEO call") ||
+        message.content.toLowerCase().includes("video call")
+      ) {
         callModeFromContent = "VIDEO";
-      } else if (message.content.includes("AUDIO call") || message.content.toLowerCase().includes("audio call")) {
+      } else if (
+        message.content.includes("AUDIO call") ||
+        message.content.toLowerCase().includes("audio call")
+      ) {
         callModeFromContent = "AUDIO";
       }
     }
-    
+
     // Check if message is a call ended notification
-    const isCallEnded = message.messageType === "CALL_ENDED" || 
-      (message.callSession?.status === "ENDED" && 
-      (message.messageType === "SYSTEM" || message.messageType === "CALL_STARTED"));
-    
+    const isCallEnded =
+      message.messageType === "CALL_ENDED" ||
+      (message.callSession?.status === "ENDED" &&
+        (message.messageType === "SYSTEM" ||
+          message.messageType === "CALL_STARTED"));
+
     // Define common avatar component
     const AvatarComponent = (
       <Avatar className="h-8 w-8 flex-shrink-0 drop-shadow-sm">
         <AvatarImage src={message.sender?.avatar || ""} />
-        <AvatarFallback className={message.isFromAdmin ? "bg-primary text-white" : "bg-gray-400 text-white"}>
-          {getInitials(message.isFromAdmin ? message.sender?.name || "A" : message.query?.donor || "D")}
+        <AvatarFallback
+          className={
+            message.isFromAdmin
+              ? "bg-primary text-white"
+              : "bg-gray-400 text-white"
+          }
+        >
+          {getInitials(
+            message.isFromAdmin
+              ? message.sender?.name || "A"
+              : message.query?.donor || "D"
+          )}
         </AvatarFallback>
       </Avatar>
     );
-    
+
     // Regular text message (CHAT, QUERY or undefined messageType)
-    if (!message.messageType || message.messageType === "CHAT" || message.messageType === "QUERY") {
+    if (
+      !message.messageType ||
+      message.messageType === "CHAT" ||
+      message.messageType === "QUERY"
+    ) {
       return (
         <div className="group relative mb-4">
           {/* Date divider if needed */}
@@ -549,41 +568,46 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
               </div>
             </div>
           )}
-          
-        <div
-          className={`flex ${
-            message.isFromAdmin ? "justify-start" : "justify-end"
-          }`}
-        >
+
           <div
             className={`flex ${
-              message.isFromAdmin ? "flex-row" : "flex-row-reverse"
+              message.isFromAdmin ? "justify-start" : "justify-end"
+            }`}
+          >
+            <div
+              className={`flex ${
+                message.isFromAdmin ? "flex-row" : "flex-row-reverse"
               } max-w-[75%] items-start gap-2`}
             >
               {/* Show avatar for the first message in a group or if explicitly required */}
-              {(message.showAvatar || message.isFirstInGroup) && AvatarComponent}
-              
+              {(message.showAvatar || message.isFirstInGroup) &&
+                AvatarComponent}
+
               {/* Empty space to maintain alignment when avatar is hidden */}
-              {!message.showAvatar && !message.isFirstInGroup && <div className="w-8" />}
-              
+              {!message.showAvatar && !message.isFirstInGroup && (
+                <div className="w-8" />
+              )}
+
               <div className="flex flex-col">
                 {/* Show name for the first message in a group */}
                 {message.isFirstInGroup && message.isFromAdmin && (
-                  <span className="text-xs font-medium text-gray-500 ml-1 mb-1">{senderName}</span>
+                  <span className="text-xs font-medium text-gray-500 ml-1 mb-1">
+                    {senderName}
+                  </span>
                 )}
-                
+
                 <div
                   className={cn(
                     "rounded-2xl px-3 py-2 text-sm break-words",
                     "shadow-sm",
-                  message.isFromAdmin
-                      ? "bg-gray-100 text-gray-900 rounded-tl-sm" 
+                    message.isFromAdmin
+                      ? "bg-gray-100 text-gray-900 rounded-tl-sm"
                       : "bg-primary text-primary-foreground rounded-tr-sm"
                   )}
-              >
-                {message.content}
+                >
+                  {message.content}
                   <span className="ml-2 inline-flex items-center float-right text-[10px] text-gray-400 mt-1 ml-1">
-                {formatTime(message.createdAt)}
+                    {formatTime(message.createdAt)}
                   </span>
                 </div>
               </div>
@@ -596,22 +620,24 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
     // Call request message (SYSTEM with call request)
     if (isCallRequest) {
       // Extract call mode from content
-      const callMode = callModeFromContent || message.callMode || 
-        (message.content.includes("VIDEO call") ? "VIDEO" : 
-        message.content.includes("AUDIO call") ? "AUDIO" : "VIDEO");
-      
+      const callMode =
+        callModeFromContent ||
+        message.callMode ||
+        (message.content.includes("VIDEO call")
+          ? "VIDEO"
+          : message.content.includes("AUDIO call")
+          ? "AUDIO"
+          : "VIDEO");
+
       // Check if this is an accepted call request
       const isAccepted = message.content.includes("✅ ACCEPTED");
-      
-      // Extract room link from markdown
-      const linkMatch = message.content.match(/\[Click here to join.*?\]\((.*?)\)/);
-      const roomLink = linkMatch ? linkMatch[1] : null;
-      
-      const callIcon = callMode === "VIDEO" ? (
-        <Video className="h-4 w-4" />
-      ) : (
-        <Phone className="h-4 w-4" />
-      );
+
+      const callIcon =
+        callMode === "VIDEO" ? (
+          <Video className="h-4 w-4" />
+        ) : (
+          <Phone className="h-4 w-4" />
+        );
 
       return (
         <div className="mb-4">
@@ -623,92 +649,121 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
               </div>
             </div>
           )}
-          
+
           {/* System message for call request */}
           <div className="flex justify-center my-2">
-            <div className={cn(
-              "bg-gray-50 border rounded-xl text-gray-600 text-xs px-4 py-2.5 max-w-[85%]",
-              isAccepted ? "bg-blue-50 border-blue-100" : "border-gray-200"
-            )}>
+            <div
+              className={cn(
+                "bg-gray-50 border rounded-xl text-gray-600 text-xs px-4 py-2.5 max-w-[85%]",
+                isAccepted ? "bg-blue-50 border-blue-100" : "border-gray-200"
+              )}
+            >
               <div className="flex items-center gap-2 mb-1">
                 {callIcon}
                 <span className="font-medium">
-                  {message.isFromAdmin ? "Admin" : "Donor"} requested a {callMode.toLowerCase()} call
+                  {message.isFromAdmin ? "Admin" : "Donor"} requested a{" "}
+                  {callMode.toLowerCase()} call
                 </span>
               </div>
-              
+
               {isAccepted && (
                 <div className="flex items-center text-green-600 gap-1 ml-6 mb-1">
                   <div className="w-4 h-4 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="w-4 h-4"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
-                  <span>Accepted by {
-                    message.content.match(/ACCEPTED by ([^*]+)/) 
-                      ? (message.content.match(/ACCEPTED by ([^*]+)/) || ["", "Admin"])[1]
-                      : "Admin"
-                  }</span>
+                  <span>
+                    Accepted by{" "}
+                    {message.content.match(/ACCEPTED by ([^*]+)/)
+                      ? (message.content.match(/ACCEPTED by ([^*]+)/) || [
+                          "",
+                          "Admin",
+                        ])[1]
+                      : "Admin"}
+                  </span>
                 </div>
               )}
-              
+
               <div className="text-right text-gray-400 text-[10px] mt-1">
                 {formatTime(message.createdAt)}
               </div>
             </div>
           </div>
-          
+
           {/* Show Accept Call button for donor requests that aren't accepted yet */}
           {isDonorCallRequest && (
             <div className="flex justify-center mt-1">
               <Button
                 size="sm"
-                variant="outline" 
+                variant="outline"
                 className="rounded-full text-xs px-4 py-1 h-auto bg-primary text-white hover:bg-primary/90"
                 onClick={() => {
                   const requestId = extractedCallRequestId || 0;
-                  console.log(`Accepting call with requestId: ${requestId}, mode: ${callMode}`);
-                  handleCallAcceptResponse(requestId, callMode as "VIDEO" | "AUDIO");
+                  console.log(
+                    `Accepting call with requestId: ${requestId}, mode: ${callMode}`
+                  );
+                  handleCallAcceptResponse(
+                    requestId,
+                    callMode as "VIDEO" | "AUDIO"
+                  );
                 }}
                 disabled={isAcceptingCall === extractedCallRequestId}
               >
                 {isAcceptingCall === extractedCallRequestId ? (
-                  <><span className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></span>Accepting...</>
+                  <>
+                    <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></span>
+                    Accepting...
+                  </>
                 ) : (
                   "Accept Call"
                 )}
               </Button>
             </div>
           )}
-          
+
           {/* Join call button if active and accepted */}
-          {isAccepted && message.callSession && message.callSession.status !== "ENDED" && (
-            <div className="flex justify-center mt-1">
-              <Button
-                size="sm"
-                variant="outline" 
-                className="rounded-full text-xs px-4 py-1 h-auto bg-primary/5 border-primary/10 text-primary hover:bg-primary/10"
-                onClick={() => {
-                  console.log("Join Call button clicked for call request:", {
-                    messageId: message.id,
-                    type: message.messageType,
-                    hasCallSession: !!message.callSession,
-                    roomName: message.roomName,
-                    callSessionId: message.callSessionId,
-                    callMode: message.callMode
-                  });
-                  handleJoinCall(message);
-                }}
-                disabled={isJoiningCall}
-              >
-                {isJoiningCall ? (
-                  <><span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></span>Joining...</>
-                ) : (
-                  "Join Call"
-                )}
-              </Button>
-            </div>
-          )}
+          {isAccepted &&
+            message.callSession &&
+            message.callSession.status !== "ENDED" && (
+              <div className="flex justify-center mt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full text-xs px-4 py-1 h-auto bg-primary/5 border-primary/10 text-primary hover:bg-primary/10"
+                  onClick={() => {
+                    console.log("Join Call button clicked for call request:", {
+                      messageId: message.id,
+                      type: message.messageType,
+                      hasCallSession: !!message.callSession,
+                      roomName: message.roomName,
+                      callSessionId: message.callSessionId,
+                      callMode: message.callMode,
+                    });
+                    handleJoinCall(message);
+                  }}
+                  disabled={isJoiningCall}
+                >
+                  {isJoiningCall ? (
+                    <>
+                      <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></span>
+                      Joining...
+                    </>
+                  ) : (
+                    "Join Call"
+                  )}
+                </Button>
+              </div>
+            )}
         </div>
       );
     }
@@ -731,7 +786,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         );
 
       let statusText = "System message";
-      
+
       if (message.messageType === "CALL_STARTED") {
         statusText = isActive ? "Active call" : "Call started";
       } else if (isCallEnded) {
@@ -747,49 +802,59 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             <div className="flex justify-center my-4">
               <div className="bg-gray-100 text-gray-500 text-xs px-3 py-1 rounded-full">
                 {formatDate(message.createdAt)}
-                </div>
+              </div>
             </div>
           )}
-          
+
           {/* System message for calls */}
           <div className="flex justify-center my-2">
-            <div className={cn(
-              "bg-gray-50 border text-gray-600 rounded-full text-xs px-3 py-1.5 flex items-center gap-2",
-              isActive && "bg-blue-50 border-blue-100 text-blue-600",
-              isCallEnded && "bg-red-50 border-red-100 text-red-600"
-            )}>
+            <div
+              className={cn(
+                "bg-gray-50 border text-gray-600 rounded-full text-xs px-3 py-1.5 flex items-center gap-2",
+                isActive && "bg-blue-50 border-blue-100 text-blue-600",
+                isCallEnded && "bg-red-50 border-red-100 text-red-600"
+              )}
+            >
               {callIcon}
               <span>{statusText}</span>
-              <span className="text-gray-400 text-[10px]">{formatTime(message.createdAt)}</span>
+              <span className="text-gray-400 text-[10px]">
+                {formatTime(message.createdAt)}
+              </span>
             </div>
-                </div>
+          </div>
 
           {/* Join call button if active */}
           {isActive && message.callSessionId && (
             <div className="flex justify-center mt-1">
-                  <Button
-                    size="sm"
-                variant="outline" 
+              <Button
+                size="sm"
+                variant="outline"
                 className="rounded-full text-xs px-4 py-1 h-auto bg-primary/5 border-primary/10 text-primary hover:bg-primary/10"
                 onClick={() => {
-                  console.log("Join Call button clicked for CALL_STARTED message:", {
-                    messageId: message.id,
-                    type: message.messageType,
-                    hasCallSession: !!message.callSession,
-                    roomName: message.roomName,
-                    callSessionId: message.callSessionId,
-                    callMode: message.callMode
-                  });
+                  console.log(
+                    "Join Call button clicked for CALL_STARTED message:",
+                    {
+                      messageId: message.id,
+                      type: message.messageType,
+                      hasCallSession: !!message.callSession,
+                      roomName: message.roomName,
+                      callSessionId: message.callSessionId,
+                      callMode: message.callMode,
+                    }
+                  );
                   handleJoinCall(message);
                 }}
                 disabled={isJoiningCall}
               >
                 {isJoiningCall ? (
-                  <><span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></span>Joining...</>
+                  <>
+                    <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></span>
+                    Joining...
+                  </>
                 ) : (
                   "Join Call"
                 )}
-                  </Button>
+              </Button>
             </div>
           )}
         </div>
@@ -798,43 +863,53 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
 
     return null;
   };
-  
+
   // Process messages to add grouping information
   const processedMessages = messages.map((message, index, allMessages) => {
     const prevMessage = index > 0 ? allMessages[index - 1] : null;
-    const nextMessage = index < allMessages.length - 1 ? allMessages[index + 1] : null;
-    
+    const nextMessage =
+      index < allMessages.length - 1 ? allMessages[index + 1] : null;
+
     // Check if this message is part of a group
-    const isFirstInGroup = !prevMessage || 
-      prevMessage.isFromAdmin !== message.isFromAdmin || 
-      (new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) > 60000;
-      
-    const isLastInGroup = !nextMessage || 
-      nextMessage.isFromAdmin !== message.isFromAdmin || 
-      (new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime()) > 60000;
-      
+    const isFirstInGroup =
+      !prevMessage ||
+      prevMessage.isFromAdmin !== message.isFromAdmin ||
+      new Date(message.createdAt).getTime() -
+        new Date(prevMessage.createdAt).getTime() >
+        60000;
+
+    const isLastInGroup =
+      !nextMessage ||
+      nextMessage.isFromAdmin !== message.isFromAdmin ||
+      new Date(nextMessage.createdAt).getTime() -
+        new Date(message.createdAt).getTime() >
+        60000;
+
     // Check if we should show a date divider
     const messageDate = new Date(message.createdAt).toDateString();
-    const prevMessageDate = prevMessage ? new Date(prevMessage.createdAt).toDateString() : null;
+    const prevMessageDate = prevMessage
+      ? new Date(prevMessage.createdAt).toDateString()
+      : null;
     const showDateDivider = !prevMessage || messageDate !== prevMessageDate;
-    
+
     // Only show avatar for first message in group or for every 5th message in a long sequence
-    const showAvatar = isFirstInGroup || (index % 5 === 0 && message.isFromAdmin);
-    
+    const showAvatar =
+      isFirstInGroup || (index % 5 === 0 && message.isFromAdmin);
+
     return {
       ...message,
       isFirstInGroup,
       isLastInGroup,
       showDateDivider,
-      showAvatar
+      showAvatar,
     };
   });
 
-      // Function to handle joining a call
+  // Function to handle joining a call
   const handleJoinCall = async (message: ExtendedChatMessage) => {
     try {
       setIsJoiningCall(true);
-    
+
       // Enhanced debug logging
       console.log("Call join data:", {
         messageType: message.messageType,
@@ -842,26 +917,30 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         callSessionData: message.callSession,
         roomName: message.roomName,
         callRequestId: message.callRequestId,
-        callSessionId: message.callSessionId
+        callSessionId: message.callSessionId,
       });
-      
+
       // Check if we have a complete callSession object
       if (message.callSession) {
         // Check if roomUrl is missing but we have roomName
         if (!message.callSession.roomUrl && message.callSession.roomName) {
           // Construct roomUrl from roomName
-          message.callSession.roomUrl = constructDailyUrl(message.callSession.roomName);
+          message.callSession.roomUrl = constructDailyUrl(
+            message.callSession.roomName
+          );
         }
-        
+
         // Verify we have all required data
         if (message.callSession.roomUrl && message.callSession.adminToken) {
           const roomUrl = message.callSession.roomUrl;
           const roomToken = message.callSession.adminToken;
           const callMode = (message.callMode || "VIDEO").toLowerCase();
-          
+
           // Extract room name from URL safely
-          const roomName = roomUrl.includes('/') ? roomUrl.split("/").pop() || "" : "";
-          
+          const roomName = roomUrl.includes("/")
+            ? roomUrl.split("/").pop() || ""
+            : "";
+
           // Initialize the call using Jotai
           startCall({
             queryId: donorQueryId,
@@ -869,16 +948,16 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             mode: callMode === "video" ? CallMode.VIDEO : CallMode.AUDIO,
             roomUrl,
             roomToken,
-            roomName
+            roomName,
           });
-          
+
           // Update internal call data state
           setCurrentCallData({
             roomUrl,
             roomToken,
             mode: callMode === "video" ? "video" : "audio",
           });
-          
+
           setIsCallModalOpen(true);
         } else {
           toast.error("Call information is incomplete");
@@ -888,41 +967,50 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         // try to fetch the call session details from the API
         try {
           toast.loading("Retrieving call information...");
-          const callSessionData = await getCallSessionById(message.callSessionId);
-          
+          const callSessionData = await getCallSessionById(
+            message.callSessionId
+          );
+
           if (callSessionData && callSessionData.data) {
             const callSession = callSessionData.data;
-            
+
             // Check if we have the required information now
             if (callSession.roomName) {
               const roomName = callSession.roomName;
               const roomUrl = constructDailyUrl(roomName);
               const roomToken = callSession.adminToken;
-              
+
               if (roomToken) {
                 // Initialize the call using Jotai
                 startCall({
                   queryId: donorQueryId,
                   userId: user?.id || 0,
-                  mode: (message.callMode?.toLowerCase() === "video") ? CallMode.VIDEO : CallMode.AUDIO,
+                  mode:
+                    message.callMode?.toLowerCase() === "video"
+                      ? CallMode.VIDEO
+                      : CallMode.AUDIO,
                   roomUrl,
                   roomToken,
-                  roomName
+                  roomName,
                 });
-                
+
                 // Update internal call data state
-            setCurrentCallData({
-              roomUrl,
+                setCurrentCallData({
+                  roomUrl,
                   roomToken,
-              mode: (message.callMode?.toLowerCase() || "video") as "audio" | "video",
-            });
-                
-            setIsCallModalOpen(true);
+                  mode: (message.callMode?.toLowerCase() || "video") as
+                    | "audio"
+                    | "video",
+                });
+
+                setIsCallModalOpen(true);
                 toast.dismiss();
               } else {
-                toast.error("Call information is incomplete. Missing admin token.");
-          }
-        } else {
+                toast.error(
+                  "Call information is incomplete. Missing admin token."
+                );
+              }
+            } else {
               toast.error("Failed to retrieve complete call information");
             }
           } else {
@@ -944,7 +1032,10 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
   };
 
   // Add function to handle accepting a call
-  const handleCallAcceptResponse = async (callRequestId: number, callMode: "VIDEO" | "AUDIO") => {
+  const handleCallAcceptResponse = async (
+    callRequestId: number,
+    callMode: "VIDEO" | "AUDIO"
+  ) => {
     if (!token) {
       toast.error("You must be logged in to accept calls");
       return;
@@ -953,22 +1044,24 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
     try {
       setIsAcceptingCall(callRequestId);
       toast.loading("Accepting call request...");
-      
+
       const response = await acceptCallRequestById(donorQueryId, callRequestId);
-      
+
       if (response && response.success) {
         toast.dismiss();
         toast.success("Call accepted successfully");
-        
+
         // Refresh messages to get updated call information
         await fetchMessages(false);
-        
+
         // If we have call data, join the call
         if (response.data?.roomUrl && response.data?.adminToken) {
           const roomUrl = response.data.roomUrl;
           const roomToken = response.data.adminToken;
-          const roomName = roomUrl.includes('/') ? roomUrl.split("/").pop() || "" : "";
-          
+          const roomName = roomUrl.includes("/")
+            ? roomUrl.split("/").pop() || ""
+            : "";
+
           // Initialize the call using Jotai
           startCall({
             queryId: donorQueryId,
@@ -976,16 +1069,16 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             mode: callMode === "VIDEO" ? CallMode.VIDEO : CallMode.AUDIO,
             roomUrl,
             roomToken,
-            roomName
+            roomName,
           });
-          
+
           // Update internal call data state
           setCurrentCallData({
             roomUrl,
             roomToken,
             mode: callMode === "VIDEO" ? "video" : "audio",
           });
-          
+
           setIsCallModalOpen(true);
         } else {
           toast.error("Call information is incomplete");
@@ -1013,20 +1106,31 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
                 <div className="text-sm text-gray-500">Loading messages...</div>
               </div>
-          </div>
-        ) : (
+            </div>
+          ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="text-gray-400 mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12 mx-auto mb-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                    />
                   </svg>
                   <p className="text-sm">No messages yet</p>
-                    </div>
+                </div>
                 <p className="text-xs text-gray-500">
                   Send a message to start the conversation
                 </p>
-                </div>
+              </div>
             </div>
           )
         ) : (
@@ -1034,7 +1138,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             {processedMessages.map((message, index) => (
               <MessageItem key={message.id || index} message={message} />
             ))}
-        <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
@@ -1092,8 +1196,17 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             {isSending ? (
               <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z"
+                  clipRule="evenodd"
+                />
               </svg>
             )}
           </Button>
@@ -1101,20 +1214,21 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
       </div>
 
       {/* CallModal component */}
-        <CallModal
-          isOpen={isCallModalOpen}
-          onClose={() => {
-            setIsCallModalOpen(false);
-            setCurrentCallData(null);
-          }}
-          position={0}
-          totalModals={1}
-          profileData={{
-            name: user?.name || "Admin",
-            image: user?.avatar || "",
-          status: currentCallData?.mode === 'video' ? 'Video Call' : 'Audio Call',
-          }}
-        />
+      <CallModal
+        isOpen={isCallModalOpen}
+        onClose={() => {
+          setIsCallModalOpen(false);
+          setCurrentCallData(null);
+        }}
+        position={0}
+        totalModals={1}
+        profileData={{
+          name: user?.name || "Admin",
+          image: user?.avatar || "",
+          status:
+            currentCallData?.mode === "video" ? "Video Call" : "Audio Call",
+        }}
+      />
     </div>
   );
 }
