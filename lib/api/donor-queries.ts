@@ -2,7 +2,7 @@ import { formatDate } from '../utils/date';
 import { fetchWithAuth } from './fetch-utils';
 
 // Define the API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
 
 // Define the donor query types
 export type QueryMode = 'Text' | 'Huddle' | 'Video Call';
@@ -111,17 +111,27 @@ export async function fetchResolvedQueries(filters?: FilterParams): Promise<Reso
     // Build query string from filters
     const queryParams = new URLSearchParams();
     if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-          queryParams.append(key, value);
-        }
-      });
+      // Only include the specific parameters that the backend accepts
+      if (filters.test) queryParams.append('test', filters.test);
+      if (filters.stage) queryParams.append('stage', filters.stage);
+      if (filters.queryMode) queryParams.append('queryMode', filters.queryMode);
+      if (filters.device) queryParams.append('device', filters.device);
+      if (filters.date) queryParams.append('date', filters.date);
+      // Skip status parameter as it's not in the backend API documentation
     }
     const queryString = queryParams.toString();
     
+    console.log(`Making request to: ${API_BASE_URL}/donor-queries/resolved${queryString ? `?${queryString}` : ''}`);
     // Fetch resolved queries
     const url = `${API_BASE_URL}/donor-queries/resolved${queryString ? `?${queryString}` : ''}`;
     const response = await fetchWithAuth(url);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Error response from API (${response.status}):`, errorText);
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+    
     const data: ApiResponse<DonorQuery[]> = await response.json();
     
     // Ensure data property is an array before mapping
@@ -152,17 +162,27 @@ export async function fetchTransferredQueries(filters?: FilterParams): Promise<T
     // Build query string from filters
     const queryParams = new URLSearchParams();
     if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-          queryParams.append(key, value);
-        }
-      });
+      // Only include the specific parameters that the backend accepts
+      if (filters.test) queryParams.append('test', filters.test);
+      if (filters.stage) queryParams.append('stage', filters.stage);
+      if (filters.queryMode) queryParams.append('queryMode', filters.queryMode);
+      if (filters.device) queryParams.append('device', filters.device);
+      if (filters.date) queryParams.append('date', filters.date);
+      // Skip status parameter as it's not in the backend API documentation
     }
     const queryString = queryParams.toString();
     
+    console.log(`Making request to: ${API_BASE_URL}/donor-queries/transferred${queryString ? `?${queryString}` : ''}`);
     // Fetch transferred queries
     const url = `${API_BASE_URL}/donor-queries/transferred${queryString ? `?${queryString}` : ''}`;
     const response = await fetchWithAuth(url);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Error response from API (${response.status}):`, errorText);
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+    
     const data: ApiResponse<DonorQuery[]> = await response.json();
     
     // Ensure data property is an array before mapping
@@ -195,9 +215,15 @@ export async function resolveQuery(id: number): Promise<DonorQuery | null> {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`Failed to resolve query ${id}. Status: ${response.status}`, errorData);
-      throw new Error(`Failed to resolve query: ${response.statusText}`);
+      let errorMessage = '';
+      try {
+        const errorData = await response.json();
+        console.error(`Failed to resolve query ${id}. Status: ${response.status}`, errorData);
+        errorMessage = errorData.message || response.statusText;
+      } catch {
+        errorMessage = await response.text();
+      }
+      throw new Error(`Failed to resolve query: ${errorMessage}`);
     }
 
     const resolvedQueryData = await response.json();
@@ -359,8 +385,8 @@ export async function acceptQuery(id: number): Promise<boolean> {
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (parseError) {
-        console.error('Could not parse error response:', parseError);
+      } catch {
+        errorMessage = await response.text();
       }
       
       // Return false but don't throw, so the UI can still proceed

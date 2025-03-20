@@ -142,7 +142,7 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
       const userId = user?.id || 1;
       console.log(`Resolving query ${data.id} with user ID ${userId}`);
       
-      const success = await resolveQuery(data.id, userId);
+      const success = await resolveQuery(data.id);
       
       if (success) {
         toast.success(`Query resolved successfully`);

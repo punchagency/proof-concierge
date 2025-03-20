@@ -4,13 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { columns } from "./GeneralQueries/Columns";
 import { DataTable } from "./GeneralQueries/DataTable";
 import { fetchGeneralQueries, GeneralQuery, FilterParams } from "@/lib/api/donor-queries";
+import { CustomWindow } from "@/lib/types/window";
 
 export type GeneralQueriesProps = GeneralQuery;
-
-// Define proper types for the window interface
-interface CustomWindow extends Window {
-  handleFilteredGeneralQueries?: (filteredData: GeneralQueriesProps[]) => void;
-}
 
 export default function GeneralQueries() {
   const [data, setData] = useState<GeneralQueriesProps[]>([]);
@@ -22,7 +18,7 @@ export default function GeneralQueries() {
     setLoading(true);
     try {
       // Save filters to window for background refresh
-      (window as any).__currentGeneralFilters = filters;
+      (window as CustomWindow).__currentGeneralFilters = filters;
       
       const queries = await fetchGeneralQueries(filters);
       setData(queries || []);
@@ -44,32 +40,30 @@ export default function GeneralQueries() {
   const handleFilteredData = useCallback((filteredData: GeneralQueriesProps[]) => {
     console.log("GeneralQueries received filtered data:", filteredData?.length);
     setData(filteredData || []);
-    // Check if any filters are applied
-    const hasActiveFilters = filteredData.length !== data.length || 
-      (currentFilters && Object.values(currentFilters).some(value => !!value));
-    console.log("Setting isFiltered to:", hasActiveFilters);
-    setIsFiltered(hasActiveFilters || false);
-  }, [data.length, currentFilters]);
-
-  // Register the handler function on the window object immediately when component mounts
-  // and ensure it's always up to date with the latest state
-  useEffect(() => {
-    console.log("Setting handleFilteredGeneralQueries on window");
     
-    // Define the handler function that will be called by FilterDropdown
-    (window as CustomWindow).handleFilteredGeneralQueries = (filteredData: GeneralQueriesProps[]) => {
+    // Check if any filters are applied
+    if (currentFilters && Object.values(currentFilters).some(val => !!val)) {
+      setIsFiltered(true);
+    } else {
+      setIsFiltered(false);
+    }
+  }, [currentFilters]);
+
+  // Register the handler function on the window object when component mounts
+  useEffect(() => {
+    const handler = (filteredData: GeneralQueriesProps[]) => {
       console.log("Window handler called with filtered data:", filteredData?.length);
-      console.log("Current data length before update:", data.length);
-      console.log("Sample filtered data:", filteredData?.slice(0, 2));
       handleFilteredData(filteredData);
     };
-
+    
+    // Set the handler on the window object
+    (window as CustomWindow).handleFilteredGeneralQueries = handler;
+    
+    // Clean up on unmount
     return () => {
-      // Clean up
-      console.log("Cleaning up handleFilteredGeneralQueries");
       delete (window as CustomWindow).handleFilteredGeneralQueries;
     };
-  }, [data, currentFilters, handleFilteredData]); // Include all dependencies
+  }, [handleFilteredData]);
 
   // Transform the data to match the DataTable's required shape
   const transformedData = data.map(item => ({

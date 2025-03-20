@@ -336,7 +336,7 @@ function AudioDeviceSelector() {
   const animationFrameRef = useRef<number | null>(null);
 
   // Define stopMicrophoneTest before handleDeviceChange
-  const stopMicrophoneTest = () => {
+  const stopMicrophoneTest = useCallback(() => {
     setIsTesting(false);
     setAudioLevel(0);
     
@@ -356,7 +356,7 @@ function AudioDeviceSelector() {
     audioAnalyserRef.current = null;
     
     console.log("Microphone test stopped");
-  };
+  }, []);
 
   // Now define handleDeviceChange with useCallback
   const handleDeviceChange = useCallback(async (type: 'input' | 'output', deviceId: string) => {
@@ -534,7 +534,7 @@ function AudioDeviceSelector() {
         stopMicrophoneTest();
       }
     };
-  }, [isTesting]);
+  }, [isTesting, stopMicrophoneTest]);
 
   // Load devices on component mount
   useEffect(() => {

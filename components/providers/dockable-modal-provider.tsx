@@ -221,7 +221,7 @@ export function DockableModalProvider({
       // Otherwise, just add the new modal
       setModals((prev) => [...prev, { id, content, profileData }]);
     },
-    [maxModals]
+    [maxModals, modals]
   );
 
   const closeModal = useCallback(
@@ -273,7 +273,7 @@ export function DockableModalProvider({
         }
       });
     },
-    [modals, callState.isActive, callState.roomName, callState.queryId, endCall]
+    [callState.isActive, callState.roomName, callState.queryId, endCall]
   );
 
   // Register the context with the bridge to avoid circular dependencies

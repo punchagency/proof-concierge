@@ -2,7 +2,7 @@ import { CallMode } from '@/types/communication';
 import { fetchWithAuth } from './fetch-utils';
 
 // Define the API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
 
 /**
  * Service for handling communication with the backend for video and audio calls

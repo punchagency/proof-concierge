@@ -4,13 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { columns } from "./TransferredQueries/Columns";
 import { DataTable } from "./TransferredQueries/DataTable";
 import { fetchTransferredQueries, TransferredQuery, FilterParams } from "@/lib/api/donor-queries";
+import { CustomWindow } from "@/lib/types/window";
 
 export type TransferredQueriesProps = TransferredQuery;
-
-// Define a custom Window interface that includes our handler function
-interface CustomWindow extends Window {
-  handleFilteredTransferredQueries?: (filteredData: TransferredQueriesProps[]) => void;
-}
 
 export default function TransferredQueries() {
   const [data, setData] = useState<TransferredQueriesProps[]>([]);
@@ -22,7 +18,7 @@ export default function TransferredQueries() {
     setLoading(true);
     try {
       // Save filters to window for background refresh
-      (window as any).__currentTransferredFilters = filters;
+      (window as CustomWindow).__currentTransferredFilters = filters;
       
       const queries = await fetchTransferredQueries(filters);
       setData(queries || []);
@@ -44,32 +40,30 @@ export default function TransferredQueries() {
   const handleFilteredData = useCallback((filteredData: TransferredQueriesProps[]) => {
     console.log("TransferredQueries received filtered data:", filteredData?.length);
     setData(filteredData || []);
-    // Check if any filters are applied
-    const hasActiveFilters = filteredData.length !== data.length || 
-      (currentFilters && Object.values(currentFilters).some(value => !!value));
-    console.log("Setting isFiltered to:", hasActiveFilters);
-    setIsFiltered(hasActiveFilters || false);
-  }, [data.length, currentFilters]);
-
-  // Register the handler function on the window object immediately when component mounts
-  // and ensure it's always up to date with the latest state
-  useEffect(() => {
-    console.log("Setting handleFilteredTransferredQueries on window");
     
-    // Define the handler function that will be called by FilterDropdown
-    (window as CustomWindow).handleFilteredTransferredQueries = (filteredData: TransferredQueriesProps[]) => {
+    // Check if any filters are applied
+    if (currentFilters && Object.values(currentFilters).some(val => !!val)) {
+      setIsFiltered(true);
+    } else {
+      setIsFiltered(false);
+    }
+  }, [currentFilters]);
+
+  // Register the handler function on the window object when component mounts
+  useEffect(() => {
+    const handler = (filteredData: TransferredQueriesProps[]) => {
       console.log("Window handler called with filtered data:", filteredData?.length);
-      console.log("Current data length before update:", data.length);
-      console.log("Sample filtered data:", filteredData?.slice(0, 2));
       handleFilteredData(filteredData);
     };
-
+    
+    // Set the handler on the window object
+    (window as CustomWindow).handleFilteredTransferredQueries = handler;
+    
+    // Clean up on unmount
     return () => {
-      // Clean up
-      console.log("Cleaning up handleFilteredTransferredQueries");
       delete (window as CustomWindow).handleFilteredTransferredQueries;
     };
-  }, [data, currentFilters, handleFilteredData]); // Include all dependencies
+  }, [handleFilteredData]);
 
   return (
     <div className="h-full w-full">

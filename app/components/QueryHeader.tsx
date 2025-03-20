@@ -5,8 +5,8 @@ import Filter from "@/icons/Filter";
 import { FilterDropdown } from "./FilterDropdown";
 import { useState, useEffect } from "react";
 import { GeneralQuery } from "@/lib/api/donor-queries";
-import { useQueryRefresh } from "@/app/donor-queries/page";
 import { RefreshCcw } from "lucide-react";
+import { useQueryRefresh } from "@/lib/hooks/use-query-refresh";
 
 export function QueryHeader() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);

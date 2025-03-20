@@ -4,13 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { columns } from "./ResolvedQueries/Columns";
 import { DataTable } from "./ResolvedQueries/DataTable";
 import { fetchResolvedQueries, ResolvedQuery, FilterParams } from "@/lib/api/donor-queries";
+import { CustomWindow } from "@/lib/types/window";
 
 export type ResolvedQueriesProps = ResolvedQuery;
-
-// Define a custom Window interface that includes our handler function
-interface CustomWindow extends Window {
-  handleFilteredResolvedQueries?: (filteredData: ResolvedQueriesProps[]) => void;
-}
 
 export default function ResolvedQueries() {
   const [data, setData] = useState<ResolvedQueriesProps[]>([]);
@@ -22,7 +18,7 @@ export default function ResolvedQueries() {
     setLoading(true);
     try {
       // Save filters to window for background refresh
-      (window as any).__currentResolvedFilters = filters;
+      (window as CustomWindow).__currentResolvedFilters = filters;
       
       const queries = await fetchResolvedQueries(filters);
       setData(queries || []);
@@ -44,32 +40,30 @@ export default function ResolvedQueries() {
   const handleFilteredData = useCallback((filteredData: ResolvedQueriesProps[]) => {
     console.log("ResolvedQueries received filtered data:", filteredData?.length);
     setData(filteredData || []);
-    // Check if any filters are applied
-    const hasActiveFilters = filteredData.length !== data.length || 
-      (currentFilters && Object.values(currentFilters).some(value => !!value));
-    console.log("Setting isFiltered to:", hasActiveFilters);
-    setIsFiltered(hasActiveFilters || false);
-  }, [data.length, currentFilters]);
-
-  // Register the handler function on the window object immediately when component mounts
-  // and ensure it's always up to date with the latest state
-  useEffect(() => {
-    console.log("Setting handleFilteredResolvedQueries on window");
     
-    // Define the handler function that will be called by FilterDropdown
-    (window as CustomWindow).handleFilteredResolvedQueries = (filteredData: ResolvedQueriesProps[]) => {
+    // Check if any filters are applied
+    if (currentFilters && Object.values(currentFilters).some(val => !!val)) {
+      setIsFiltered(true);
+    } else {
+      setIsFiltered(false);
+    }
+  }, [currentFilters]);
+
+  // Register the handler function on the window object when component mounts
+  useEffect(() => {
+    const handler = (filteredData: ResolvedQueriesProps[]) => {
       console.log("Window handler called with filtered data:", filteredData?.length);
-      console.log("Current data length before update:", data.length);
-      console.log("Sample filtered data:", filteredData?.slice(0, 2));
       handleFilteredData(filteredData);
     };
-
+    
+    // Set the handler on the window object
+    (window as CustomWindow).handleFilteredResolvedQueries = handler;
+    
+    // Clean up on unmount
     return () => {
-      // Clean up
-      console.log("Cleaning up handleFilteredResolvedQueries");
       delete (window as CustomWindow).handleFilteredResolvedQueries;
     };
-  }, [data, currentFilters, handleFilteredData]); // Include all dependencies
+  }, [handleFilteredData]);
 
   return (
     <div className="h-full w-full">
