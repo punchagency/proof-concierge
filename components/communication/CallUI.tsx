@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   DailyVideo,
   useDaily,
@@ -32,6 +32,7 @@ import {
   isScreenSharingAtom,
   participantCountAtom,
   endCallAtom,
+  callStateAtom,
 } from "@/lib/atoms/callState";
 import {
   Tooltip,
@@ -50,9 +51,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
+import { endCall as endCallApi, updateQueryMode } from "@/lib/api/communication";
 
 interface CallUIProps {
   onLeave: () => void;
+}
+
+// Define interfaces for Daily.co types
+interface DailyInputDevices {
+  audioDeviceId?: string;
+  videoDeviceId?: string;
+  speakerDeviceId?: string;
+}
+
+interface DailyAudioStats {
+  audio?: {
+    send?: {
+      bitrate: number;
+      packetsLost: number;
+      jitter: number;
+      audioLevel?: number;
+    }
+  }
+}
+
+interface DailyParticipantWithAudio {
+  audio?: boolean;
+  audio_activity?: number;
 }
 
 function ParticipantThumbnail({
@@ -310,8 +335,63 @@ function AudioDeviceSelector() {
   const audioAnalyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  // Load available audio devices
-  const loadAudioDevices = async () => {
+  // Define stopMicrophoneTest before handleDeviceChange
+  const stopMicrophoneTest = () => {
+    setIsTesting(false);
+    setAudioLevel(0);
+    
+    // Stop animation frame
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
+    // Close audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(err => console.error("Error closing audio context:", err));
+      audioContextRef.current = null;
+    }
+    
+    // Clear analyzer
+    audioAnalyserRef.current = null;
+    
+    console.log("Microphone test stopped");
+  };
+
+  // Now define handleDeviceChange with useCallback
+  const handleDeviceChange = useCallback(async (type: 'input' | 'output', deviceId: string) => {
+    try {
+      if (!daily) return;
+      
+      // Stop testing if changing input device
+      if (type === 'input' && isTesting) {
+        stopMicrophoneTest();
+      }
+      
+      // Prepare device configuration
+      const deviceConfig: Partial<DailyInputDevices> = {};
+      
+      if (type === 'input') {
+        deviceConfig.audioDeviceId = deviceId;
+        setSelectedInputDevice(deviceId);
+      } else {
+        deviceConfig.speakerDeviceId = deviceId;
+        setSelectedOutputDevice(deviceId);
+      }
+      
+      // Update Daily.co's device settings
+      await daily.setInputDevicesAsync(deviceConfig);
+      
+      toast.success(`Audio ${type} device updated`);
+    } catch (error) {
+      console.error(`Error changing audio ${type} device:`, error);
+      toast.error(`Failed to change audio ${type} device`);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [daily, isTesting]);
+
+  // Now define loadAudioDevices with useCallback
+  const loadAudioDevices = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -331,8 +411,8 @@ function AudioDeviceSelector() {
       // Get current devices from Daily.co
       if (daily) {
         try {
-          // Get current device configuration - cast to any to bypass type issues
-          const inputDevices = await daily.getInputDevices() as any;
+          // Get current device configuration
+          const inputDevices = await daily.getInputDevices() as DailyInputDevices;
           if (inputDevices && typeof inputDevices === 'object') {
             // Get input device
             const audioInputId = inputDevices.audioDeviceId || '';
@@ -379,7 +459,8 @@ function AudioDeviceSelector() {
       toast.error("Failed to load audio devices");
       setIsLoading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [daily]);
 
   // Start audio level testing
   const startMicrophoneTest = async () => {
@@ -447,29 +528,6 @@ function AudioDeviceSelector() {
     }
   };
   
-  // Stop audio testing
-  const stopMicrophoneTest = () => {
-    setIsTesting(false);
-    setAudioLevel(0);
-    
-    // Stop animation frame
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    
-    // Close audio context
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(err => console.error("Error closing audio context:", err));
-      audioContextRef.current = null;
-    }
-    
-    // Clear analyzer
-    audioAnalyserRef.current = null;
-    
-    console.log("Microphone test stopped");
-  };
-  
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -484,38 +542,7 @@ function AudioDeviceSelector() {
     if (daily) {
       loadAudioDevices();
     }
-  }, [daily]);
-
-  // Handle device change
-  const handleDeviceChange = async (type: 'input' | 'output', deviceId: string) => {
-    try {
-      if (!daily) return;
-      
-      // Stop testing if changing input device
-      if (type === 'input' && isTesting) {
-        stopMicrophoneTest();
-      }
-      
-      // Prepare device configuration
-      const deviceConfig: any = {};
-      
-      if (type === 'input') {
-        deviceConfig.audioDeviceId = deviceId;
-        setSelectedInputDevice(deviceId);
-      } else {
-        deviceConfig.speakerDeviceId = deviceId;
-        setSelectedOutputDevice(deviceId);
-      }
-      
-      // Update Daily.co's device settings
-      await daily.setInputDevicesAsync(deviceConfig);
-      
-      toast.success(`Audio ${type} device updated`);
-    } catch (error) {
-      console.error(`Error changing audio ${type} device:`, error);
-      toast.error(`Failed to change audio ${type} device`);
-    }
-  };
+  }, [daily, loadAudioDevices]);
 
   // Refresh device list
   const handleRefreshDevices = () => {
@@ -672,7 +699,7 @@ function AudioDeviceSelector() {
                       selectedOutputDevice === device.deviceId ? "text-primary" : "text-muted-foreground"
                     )}
                   >
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 19 11 19 11 5"></polygon>
                     <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
                     <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
                   </svg>
@@ -716,6 +743,10 @@ export function CallUI({ onLeave }: CallUIProps) {
   const [isFullyJoined, setIsFullyJoined] = useState(false);
   const [connectionState, setConnectionState] = useState<string>("connecting");
   const [dailyInitError, setDailyInitError] = useState<string | null>(null);
+  const [meetingState, setMeetingState] = useState<string>("connecting");
+  const meetingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [meetingDuration, setMeetingDuration] = useState(0);
+  const [callState] = useAtom(callStateAtom);
 
   // Sort participant IDs to ensure consistent order
   const sortedParticipantIds = [...participantIds].sort((a, b) => {
@@ -737,25 +768,29 @@ export function CallUI({ onLeave }: CallUIProps) {
     };
   }, []);
 
-  // Monitor meeting state events
+  // Event handlers for Daily.js events
   useDailyEvent("joined-meeting", () => {
-    console.log("CallUI: joined-meeting event received");
-    setConnectionState("joined");
+    console.log("Joined meeting");
+    setIsFullyJoined(true);
     setDailyInitError(null);
-    setTimeout(() => {
-      setIsFullyJoined(true);
-    }, 1000); // Short delay to ensure everything is loaded
+    setMeetingState("joined-meeting");
   });
 
-  // Handle meeting errors
   useDailyEvent("error", (ev) => {
-    console.error("Daily.co error event:", ev);
-    setDailyInitError(ev?.errorMsg || "Unknown Daily.co error");
-    toast.error(`Call error: ${ev?.errorMsg || "Unknown error"}`);
+    console.error("Daily error:", ev);
+    setDailyInitError(ev.errorMsg);
   });
+
+  useDailyEvent("left-meeting", 
+    useCallback(() => {
+      console.log("Left meeting event received");
+      setMeetingState("left-meeting");
+      endCall();
+    }, [endCall])
+  );
 
   useDailyEvent("participant-joined", (event) => {
-    console.log("Participant joined:", event?.participant?.user_name || event?.participant?.session_id);
+    console.log("Participant joined:", event.participant.user_id);
   });
 
   useDailyEvent("participant-left", (event) => {
@@ -773,17 +808,22 @@ export function CallUI({ onLeave }: CallUIProps) {
       if (!daily) return;
 
       try {
-        // Set initial audio/video state
-        if (isVideoOff) {
-          await daily.setLocalVideo(false);
+        // Check current video state before setting it
+        const localParticipant = daily.participants().local;
+        const currentVideoState = localParticipant?.tracks?.video?.state === "off";
+
+        // Only set video state if it doesn't match the desired state
+        if (isVideoOff !== currentVideoState) {
+          await daily.setLocalVideo(!isVideoOff);
         }
 
-        if (isMuted) {
-          await daily.setLocalAudio(false);
-        } else {
-          // Explicitly ensure microphone is enabled
-          await daily.setLocalAudio(true);
-          console.log("Microphone explicitly enabled");
+        // Check current audio state before setting it
+        const currentAudioState = localParticipant?.tracks?.audio?.state === "off";
+        if (isMuted !== currentAudioState) {
+          await daily.setLocalAudio(!isMuted);
+          if (!isMuted) {
+            console.log("Microphone explicitly enabled");
+          }
         }
 
         // Verify audio transmission capabilities
@@ -804,7 +844,7 @@ export function CallUI({ onLeave }: CallUIProps) {
             if (daily && !isMuted) {
               const stats = await daily.getNetworkStats();
               // Type assertion for audio stats since the Daily.co typings are incomplete
-              const statsData = stats?.stats?.latest as any;
+              const statsData = stats?.stats?.latest as DailyAudioStats;
               
               if (statsData?.audio?.send) {
                 const audioStats = statsData.audio.send;
@@ -850,7 +890,7 @@ export function CallUI({ onLeave }: CallUIProps) {
     const checkAudioTransmission = () => {
       try {
         // Use type assertion for audio_activity property
-        const localParticipant = daily.participants().local as any;
+        const localParticipant = daily.participants().local as unknown as DailyParticipantWithAudio;
         if (!localParticipant) return;
         
         const audioActivity = localParticipant.audio_activity || 0;
@@ -958,8 +998,9 @@ export function CallUI({ onLeave }: CallUIProps) {
         await daily.stopScreenShare();
         setIsScreenSharing(false);
       } else {
+        // Start screen sharing without immediately updating state
         await daily.startScreenShare();
-        setIsScreenSharing(true);
+        // The state will be updated in the useEffect that monitors the screens array
       }
     } catch (error) {
       console.error("Error toggling screen share:", error);
@@ -975,11 +1016,48 @@ export function CallUI({ onLeave }: CallUIProps) {
     }
   };
 
+  // Use useEffect to track screen sharing changes directly
+  useEffect(() => {
+    if (screens.length > 0 && !isScreenSharing) {
+      console.log("Screen sharing started successfully");
+      setIsScreenSharing(true);
+    } else if (screens.length === 0 && isScreenSharing) {
+      console.log("Screen sharing stopped");
+      setIsScreenSharing(false);
+    }
+  }, [screens, isScreenSharing]);
+
   // Handle ending the call
-  const handleEndCall = () => {
+  const handleEndCall = useCallback(() => {
+    // Immediately update UI state without showing a toast
     endCall();
+    
+    // Call the parent's callback right away to close the UI/modal
     onLeave();
-  };
+    
+    // Then handle the cleanup in the background with minimal operations
+    if (daily) {
+      setTimeout(() => {
+        daily.leave();
+      }, 0);
+    }
+    
+    // Run API calls in a separate microtask to avoid blocking UI
+    if (callState.roomName) {
+      queueMicrotask(() => {
+        endCallApi(callState.roomName!)
+          .then(() => {
+            // Only update query mode if needed
+            if (callState.queryId) {
+              return updateQueryMode(callState.queryId, "Text");
+            }
+          })
+          .catch(error => {
+            console.error("Background API calls failed:", error);
+          });
+      });
+    }
+  }, [daily, callState, endCall, onLeave]);
 
   // Toggle fullscreen mode
   const toggleFullscreen = () => {
@@ -995,6 +1073,50 @@ export function CallUI({ onLeave }: CallUIProps) {
       }
     }
   };
+
+  // Monitor for call ending through meeting state
+  useEffect(() => {
+    if (meetingState === "left-meeting") {
+      console.log("Meeting ended detected via meeting state");
+      
+      // Immediately update UI state without toast
+      endCall();
+      onLeave();
+      
+      // Handle API calls in the background without blocking the UI
+      if (callState.roomName) {
+        queueMicrotask(() => {
+          endCallApi(callState.roomName!)
+            .then(() => {
+              // Update query mode if needed
+              if (callState.queryId) {
+                return updateQueryMode(callState.queryId, "Text");
+              }
+            })
+            .catch(error => {
+              console.error("Background API calls failed:", error);
+            });
+        });
+      }
+    }
+  }, [meetingState, callState, endCall, onLeave]);
+
+  // Set up meeting timer
+  useEffect(() => {
+    if (isFullyJoined && !meetingTimerRef.current) {
+      console.log("Starting meeting timer");
+      meetingTimerRef.current = setInterval(() => {
+        setMeetingDuration(prev => prev + 1);
+      }, 1000);
+    }
+    
+    return () => {
+      if (meetingTimerRef.current) {
+        clearInterval(meetingTimerRef.current);
+        meetingTimerRef.current = null;
+      }
+    };
+  }, [isFullyJoined, meetingState]);
 
   // Render loading state if not fully joined
   if (!isFullyJoined || dailyInitError) {

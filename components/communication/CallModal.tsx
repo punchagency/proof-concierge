@@ -7,6 +7,7 @@ import { useAtom } from 'jotai';
 import { callStateAtom, endCallAtom } from '@/lib/atoms/callState';
 import { CallUI } from './CallUI';
 import { Loader2 } from 'lucide-react';
+import { useDaily } from '@daily-co/daily-react';
 
 interface CallModalProps {
   isOpen: boolean;
@@ -30,11 +31,26 @@ export function CallModal({
   const [callState, setCallState] = useAtom(callStateAtom);
   const [, endCall] = useAtom(endCallAtom);
   const [isConnecting, setIsConnecting] = useState(true);
+  const daily = useDaily();
 
   const handleLeave = () => {
     console.log("Ending call from handleLeave");
-    endCall();
-    onClose();
+    if (daily) {
+      daily.leave().then(() => {
+        console.log("Successfully left the Daily call from modal");
+        endCall();
+        onClose();
+      }).catch(err => {
+        console.error("Error leaving the Daily call from modal:", err);
+        // Still try to end the call even if there was an error leaving
+        endCall();
+        onClose();
+      });
+    } else {
+      // If daily instance isn't available, just end the call
+      endCall();
+      onClose();
+    }
   };
 
   // Make sure call state is active when modal is open

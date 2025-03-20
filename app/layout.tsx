@@ -7,6 +7,7 @@ import { CallProvider } from "@/components/providers/CallProvider";
 import { DockableModalProvider } from "@/components/providers/dockable-modal-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/auth-context";
+import { Provider as JotaiProvider } from "jotai";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -28,17 +29,19 @@ export default function RootLayout({
       <body
         className={`${inter.variable} font-sans antialiased`}
       >
-        <AuthProvider>
-          <CallProvider>
-            <DockableModalProvider>
-              <CallManagerProvider>
-                <Header />
-                {children}
-                <Toaster position="top-right" />
-              </CallManagerProvider>
-            </DockableModalProvider>
-          </CallProvider>
-        </AuthProvider>
+        <JotaiProvider>
+          <AuthProvider>
+            <CallProvider>
+              <DockableModalProvider>
+                <CallManagerProvider>
+                  <Header />
+                  {children}
+                  <Toaster position="top-right" />
+                </CallManagerProvider>
+              </DockableModalProvider>
+            </CallProvider>
+          </AuthProvider>
+        </JotaiProvider>
       </body>
     </html>
   );

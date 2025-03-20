@@ -4,10 +4,10 @@ import React, { createContext, useContext, useCallback } from "react";
 import { toast } from "sonner";
 import { startQueryCall, endCall as endCallApi, updateQueryMode } from "@/lib/api/communication";
 import { CallMode } from "@/types/communication";
-import { useDockableModal } from "./dockable-modal-provider";
 import { QueryDetails } from "../QueryDetails";
 import { useAtom } from "jotai";
 import { callStateAtom, startCallAtom, endCallAtom, isMutedAtom, isVideoOffAtom, isScreenSharingAtom } from "@/lib/atoms/callState";
+import contextBridge from "@/lib/context-bridge";
 
 interface ProfileData {
   name: string;
@@ -49,7 +49,22 @@ export function useCallManager() {
 }
 
 export function CallManagerProvider({ children }: { children: React.ReactNode }) {
-  const { openModal } = useDockableModal();
+  // Get the dockable modal context through the bridge
+  const dockableModalContext = contextBridge.getDockableModalContext();
+  
+  // Define a safe openModal function
+  const openModal = useCallback((
+    id: string, 
+    content: React.ReactNode, 
+    profileData: { name: string; image: string; status: string }
+  ) => {
+    if (dockableModalContext) {
+      dockableModalContext.openModal(id, content, profileData);
+    } else {
+      console.warn("openModal called but DockableModalProvider is not available");
+    }
+  }, [dockableModalContext]);
+  
   const [callState] = useAtom(callStateAtom);
   const [, startCall] = useAtom(startCallAtom);
   const [, endCall] = useAtom(endCallAtom);
@@ -76,25 +91,25 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
   }, [callState.isScreenSharing, setIsScreenSharing]);
 
   // Helper function to end a specific call by roomName
-  const endCallByRoomName = useCallback(async (roomName: string) => {
-    try {
-      await endCallApi(roomName);
-      endCall();
-      
-      if (currentCallUser) {
-        toast.success(`Call with ${currentCallUser.name} ended`);
-        setCurrentCallUser(null);
-      }
-      
-      if (currentQueryId) {
-        await updateQueryMode(currentQueryId, "Text");
-        setCurrentQueryId(null);
-      }
-    } catch (error) {
-      console.error("Error ending call:", error);
-      toast.error("Failed to end call. Please try again.");
-    }
-  }, [endCall, currentCallUser, currentQueryId]);
+  const endCallByRoomName = useCallback((roomName: string) => {
+    // Immediately update UI state
+    endCall();
+    setCurrentCallUser(null);
+    setCurrentQueryId(null);
+    
+    // Handle API calls without blocking UI
+    queueMicrotask(() => {
+      endCallApi(roomName)
+        .then(() => {
+          if (currentQueryId) {
+            return updateQueryMode(currentQueryId, "Text");
+          }
+        })
+        .catch(error => {
+          console.error("Error ending call:", error);
+        });
+    });
+  }, [endCall, currentQueryId]);
 
   // Function to start a video call
   const startVideoCall = useCallback(async (queryId: number, userId: number, profileData: ProfileData) => {
@@ -123,8 +138,6 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
       // Store the current user and queryId for reference
       setCurrentCallUser(profileData);
       setCurrentQueryId(queryId);
-      
-      toast.success(`Starting video call with ${profileData.name}`);
       
       // Open the query details modal with updated query mode
       openModal(
@@ -179,8 +192,6 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
       setCurrentCallUser(profileData);
       setCurrentQueryId(queryId);
       
-      toast.success(`Starting audio call with ${profileData.name}`);
-      
       // Open the query details modal with updated query mode
       openModal(
         `query-${queryId}`,
@@ -207,33 +218,33 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
   }, [callState.isActive, startCall, openModal]);
 
   // Function to end the current call
-  const endCurrentCall = useCallback(async () => {
+  const endCurrentCall = useCallback(() => {
     if (!callState.isActive || !callState.roomName) {
       return;
     }
 
-    try {
-      // End the call on the backend
-      await endCallApi(callState.roomName);
-      
-      // Reset call state via Jotai atom
-      endCall();
-      
-      if (currentCallUser) {
-        toast.success(`Call with ${currentCallUser.name} ended`);
-        setCurrentCallUser(null);
-      }
-      
-      // Update the query mode back to Text if we have a query ID
-      if (currentQueryId) {
-        await updateQueryMode(currentQueryId, "Text");
-        setCurrentQueryId(null);
-      }
-    } catch (error) {
-      console.error("Error ending call:", error);
-      toast.error("Failed to end call. Please try again.");
-    }
-  }, [callState.isActive, callState.roomName, endCall, currentCallUser, currentQueryId]);
+    // Immediately update UI state
+    endCall();
+    setCurrentCallUser(null);
+    setCurrentQueryId(null);
+    
+    // Store references to avoid closure issues
+    const roomName = callState.roomName;
+    const queryId = currentQueryId;
+    
+    // Handle API calls without blocking UI
+    queueMicrotask(() => {
+      endCallApi(roomName)
+        .then(() => {
+          if (queryId) {
+            return updateQueryMode(queryId, "Text");
+          }
+        })
+        .catch(error => {
+          console.error("Error ending call:", error);
+        });
+    });
+  }, [callState.isActive, callState.roomName, endCall, currentQueryId]);
 
   return (
     <CallManagerContext.Provider

@@ -177,6 +177,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       await callInstance.join({
         url: roomData.roomUrl,
         token: roomData.roomToken,
+        startVideoOff: mode === CallMode.AUDIO,
       });
 
       // Update state

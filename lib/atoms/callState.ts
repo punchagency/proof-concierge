@@ -20,8 +20,8 @@ export interface CallState {
 const initialCallState: CallState = {
   isActive: false,
   mode: null,
-  isMuted: false,
-  isVideoOff: false,
+  isMuted: true,
+  isVideoOff: true,
   isScreenSharing: false,
   participantCount: 0,
   roomUrl: null,

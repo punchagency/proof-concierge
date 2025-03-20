@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, ReactNode } from 'react';
-import { DailyProvider } from '@daily-co/daily-react';
+import { DailyAudio, DailyProvider } from '@daily-co/daily-react';
 import { useAtom } from 'jotai';
 import { 
   callStateAtom,
@@ -16,6 +16,8 @@ import { useDaily, useDailyEvent } from '@daily-co/daily-react';
 function DailyInitializer() {
   const { user } = useAuth();
   const daily = useDaily();
+  const [isVideoOff] = useAtom(isVideoOffAtom);
+  const [isMuted] = useAtom(isMutedAtom);
   
   // Explicitly join the meeting when Daily object is available
   useEffect(() => {
@@ -25,9 +27,12 @@ function DailyInitializer() {
         console.log("Setting Daily username to:", user?.name || 'Admin');
         daily.setUserName(user?.name || 'Admin');
         
-        // Explicitly join the meeting
-        console.log("Explicitly joining the meeting...");
-        daily.join().then(() => {
+        // Explicitly join the meeting with appropriate options
+        console.log("Explicitly joining the meeting with video off:", isVideoOff);
+        daily.join({
+          startVideoOff: isVideoOff, // Prevent camera from being accessed if video is off
+          startAudioOff: isMuted,    // Prevent mic from being accessed if audio is muted
+        }).then(() => {
           console.log("Successfully joined the call through explicit join()");
         }).catch(err => {
           console.error("Error joining the call:", err);
@@ -36,7 +41,7 @@ function DailyInitializer() {
         console.error("Error during call initialization:", error);
       }
     }
-  }, [daily, user]);
+  }, [daily, user, isVideoOff, isMuted]);
 
   // Add additional logging for various meeting state changes
   useDailyEvent('joining-meeting', () => {
@@ -126,6 +131,7 @@ export function DailyCall({ roomUrl, roomToken, mode, children }: DailyCallProps
       token={roomToken}
     >
       <DailyInitializer />
+      <DailyAudio />
       {children}
     </DailyProvider>
   );
