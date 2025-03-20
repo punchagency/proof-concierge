@@ -13,7 +13,10 @@ import { DockableQueryModal } from "../GeneralQueries/DockableQueryModal";
 import { GeneralQuery } from "@/lib/api/donor-queries";
 import { callStateAtom, endCallAtom } from "@/lib/atoms/callState";
 import { useAtom } from "jotai";
-import { endCall as endCallApi, updateQueryMode } from "@/lib/api/communication";
+import {
+  endCall as endCallApi,
+  updateQueryMode,
+} from "@/lib/api/communication";
 import { usePathname } from "next/navigation";
 import { CallManagerProvider } from "./CallManagerProvider";
 import contextBridge from "@/lib/context-bridge";
@@ -21,8 +24,8 @@ import contextBridge from "@/lib/context-bridge";
 // Serializable modal data structure
 interface SerializableModalData {
   id: string;
-  type: 'query' | 'details';
-  queryData?: GeneralQuery;  // Use GeneralQuery type
+  type: "query" | "details";
+  queryData?: GeneralQuery; // Use GeneralQuery type
   profileData: {
     name: string;
     image: string;
@@ -86,44 +89,48 @@ export function DockableModalProvider({
   const [callState] = useAtom(callStateAtom);
   const [, endCall] = useAtom(endCallAtom);
   const pathname = usePathname();
-  const isDonorQueriesPage = pathname === '/donor-queries';
+  const isDonorQueriesPage = pathname === "/donor-queries";
 
   // Restore modals from localStorage on mount - only on donor-queries page
   useEffect(() => {
     if (!isDonorQueriesPage) return;
-    
-    const savedModals = localStorage.getItem('openModals');
+
+    const savedModals = localStorage.getItem("openModals");
     if (savedModals) {
       try {
         const parsedModals: SerializableModalData[] = JSON.parse(savedModals);
-        
+
         // Convert serializable data back to Modal objects with proper React components
-        const reconstructedModals = parsedModals.map(modalData => {
+        const reconstructedModals = parsedModals.map((modalData) => {
           let content: React.ReactNode;
-          
+
           // Add dateNdTime if it's missing
-          const queryData = modalData.queryData ? {
-            ...modalData.queryData,
-            dateNdTime: modalData.queryData.dateNdTime || new Date(modalData.queryData.createdAt).toLocaleString()
-          } : undefined;
-          
+          const queryData = modalData.queryData
+            ? {
+                ...modalData.queryData,
+                dateNdTime:
+                  modalData.queryData.dateNdTime ||
+                  new Date(modalData.queryData.createdAt).toLocaleString(),
+              }
+            : undefined;
+
           // Reconstruct the appropriate component based on the type
-          if (modalData.type === 'query') {
+          if (modalData.type === "query") {
             content = <DockableQueryModal data={queryData!} />;
-          } else if (modalData.type === 'details') {
+          } else if (modalData.type === "details") {
             content = <QueryDetails data={queryData!} />;
           }
-          
+
           return {
             id: modalData.id,
             content,
-            profileData: modalData.profileData
+            profileData: modalData.profileData,
           };
         });
-        
+
         setModals(reconstructedModals);
       } catch (error) {
-        console.error('Error restoring modals from localStorage:', error);
+        console.error("Error restoring modals from localStorage:", error);
       }
     }
   }, [isDonorQueriesPage]);
@@ -131,26 +138,32 @@ export function DockableModalProvider({
   // Save modals to localStorage whenever they change - only on donor-queries page
   useEffect(() => {
     if (!isDonorQueriesPage) return;
-    
+
     // Convert Modal objects to serializable format
-    const serializableModals: SerializableModalData[] = modals.map(modal => {
+    const serializableModals: SerializableModalData[] = modals.map((modal) => {
       // Determine the type and extract necessary data based on the content
-      const isQueryModal = React.isValidElement(modal.content) && modal.content.type === DockableQueryModal;
-      const isDetailsModal = React.isValidElement(modal.content) && modal.content.type === QueryDetails;
-      
-      const queryData = isQueryModal || isDetailsModal 
-        ? (modal.content as React.ReactElement<{ data: GeneralQuery }>)?.props?.data 
-        : undefined;
+      const isQueryModal =
+        React.isValidElement(modal.content) &&
+        modal.content.type === DockableQueryModal;
+      const isDetailsModal =
+        React.isValidElement(modal.content) &&
+        modal.content.type === QueryDetails;
+
+      const queryData =
+        isQueryModal || isDetailsModal
+          ? (modal.content as React.ReactElement<{ data: GeneralQuery }>)?.props
+              ?.data
+          : undefined;
 
       return {
         id: modal.id,
-        type: isQueryModal ? 'query' : 'details',
+        type: isQueryModal ? "query" : "details",
         queryData,
-        profileData: modal.profileData
+        profileData: modal.profileData,
       };
     });
 
-    localStorage.setItem('openModals', JSON.stringify(serializableModals));
+    localStorage.setItem("openModals", JSON.stringify(serializableModals));
   }, [modals, isDonorQueriesPage]);
 
   // Modal width and spacing constants
@@ -208,84 +221,97 @@ export function DockableModalProvider({
       // Otherwise, just add the new modal
       setModals((prev) => [...prev, { id, content, profileData }]);
     },
-    [modals, maxModals]
+    [maxModals]
   );
 
-  const closeModal = useCallback((id: string) => {
-    const modalToClose = modals.find(modal => modal.id === id);
-    const isActiveCall = callState.isActive && callState.roomName;
-    
-    // Immediately remove the modal to make the UI responsive
-    setModals((prev) => prev.filter((modal) => modal.id !== id));
-    
-    // If no call is active, we're done
-    if (!isActiveCall) return;
-    
-    console.log("Ending call due to modal closing");
-    
-    // Immediately end call state for UI responsiveness
-    endCall();
-    
-    // Handle API cleanup separately in the background
-    queueMicrotask(() => {
-      try {
-        // First, try to find and clean up Daily iframe
-        document.querySelectorAll('iframe').forEach(iframe => {
-          if (iframe.src && iframe.src.includes('daily')) {
-            try {
-              const dailyInstance = (iframe as DailyIframe).daily;
-              if (dailyInstance?.leave) dailyInstance.leave();
-              if (dailyInstance?.destroy) dailyInstance.destroy();
-            } catch (e) {}
-            // Remove the iframe for immediate visual cleanup
-            iframe.remove();
-          }
-        });
-        
-        // Then handle API calls without blocking UI
-        endCallApi(callState.roomName!)
-          .then(() => {
-            if (callState.queryId) {
-              return updateQueryMode(callState.queryId, "Text");
+  const closeModal = useCallback(
+    (id: string) => {
+      const isActiveCall = callState.isActive && callState.roomName;
+
+      // Immediately remove the modal to make the UI responsive
+      setModals((prev) => prev.filter((modal) => modal.id !== id));
+
+      // If no call is active, we're done
+      if (!isActiveCall) return;
+
+      console.log("Ending call due to modal closing");
+
+      // Immediately end call state for UI responsiveness
+      endCall();
+
+      // Handle API cleanup separately in the background
+      queueMicrotask(() => {
+        try {
+          // First, try to find and clean up Daily iframe
+          document.querySelectorAll("iframe").forEach((iframe) => {
+            if (iframe.src && iframe.src.includes("daily")) {
+              try {
+                const dailyInstance = (iframe as DailyIframe).daily;
+                if (dailyInstance?.leave) dailyInstance.leave();
+                if (dailyInstance?.destroy) dailyInstance.destroy();
+              } catch {
+                // Ignore errors when accessing iframe
+              }
+              // Remove the iframe for immediate visual cleanup
+              iframe.remove();
             }
-          })
-          .catch(() => {});
-        
-        // Clean up media in background
-        setTimeout(cleanupMediaResources, 100);
-      } catch (error) {
-        console.error("Error in background cleanup:", error);
-      }
-    });
-  }, [modals, callState.isActive, callState.roomName, callState.queryId, endCall]);
+          });
+
+          // Then handle API calls without blocking UI
+          endCallApi(callState.roomName!)
+            .then(() => {
+              if (callState.queryId) {
+                return updateQueryMode(callState.queryId, "Text");
+              }
+            })
+            .catch(() => {});
+
+          // Clean up media in background
+          setTimeout(cleanupMediaResources, 100);
+        } catch (error) {
+          console.error("Error in background cleanup:", error);
+        }
+      });
+    },
+    [modals, callState.isActive, callState.roomName, callState.queryId, endCall]
+  );
 
   // Register the context with the bridge to avoid circular dependencies
   useEffect(() => {
     contextBridge.registerDockableModalContext(openModal, closeModal);
     return () => {
       // Clear the registration on unmount
-      contextBridge.registerDockableModalContext(() => {}, () => {});
+      contextBridge.registerDockableModalContext(
+        () => {},
+        () => {}
+      );
     };
   }, [openModal, closeModal]);
 
   // Helper function to clean up media resources
   const cleanupMediaResources = () => {
     // Cleanup method 1: Get all media streams from elements and stop tracks
-    document.querySelectorAll('video, audio').forEach(element => {
+    document.querySelectorAll("video, audio").forEach((element) => {
       const mediaElement = element as HTMLMediaElement;
       if (mediaElement.srcObject instanceof MediaStream) {
         const stream = mediaElement.srcObject;
-        stream.getTracks().forEach(track => {
+        stream.getTracks().forEach((track) => {
           track.stop();
-          console.log(`Stopped track: ${track.kind}, enabled: ${track.enabled}, state: ${track.readyState}`);
+          console.log(
+            `Stopped track: ${track.kind}, enabled: ${track.enabled}, state: ${track.readyState}`
+          );
         });
         mediaElement.srcObject = null;
       }
     });
 
     // Cleanup method 2: Find all iframes that could contain Daily.co and remove them
-    document.querySelectorAll('iframe').forEach(iframe => {
-      if (iframe.src && (iframe.src.includes('daily') || iframe.hasAttribute('data-daily-iframe'))) {
+    document.querySelectorAll("iframe").forEach((iframe) => {
+      if (
+        iframe.src &&
+        (iframe.src.includes("daily") ||
+          iframe.hasAttribute("data-daily-iframe"))
+      ) {
         console.log(`Removing Daily iframe: ${iframe.src}`);
         iframe.remove();
       }
@@ -294,17 +320,19 @@ export function DockableModalProvider({
     // Cleanup method 3: Find and stop any active media tracks globally
     if (navigator && navigator.mediaDevices) {
       // Get current active tracks from getUserMedia
-      navigator.mediaDevices.getUserMedia({ audio: true, video: true })
-        .then(stream => {
-          stream.getTracks().forEach(track => {
+      navigator.mediaDevices
+        .getUserMedia({ audio: true, video: true })
+        .then((stream) => {
+          stream.getTracks().forEach((track) => {
             track.stop();
             console.log(`Stopped media track: ${track.kind}`);
           });
         })
-        .catch(() => console.log('No media streams to stop'));
-      
+        .catch(() => console.log("No media streams to stop"));
+
       // Also check for any enumerateDevices change to reset permissions
-      navigator.mediaDevices.enumerateDevices()
+      navigator.mediaDevices
+        .enumerateDevices()
         .then(() => console.log("Media device enumeration complete"))
         .catch(() => console.log("Media device enumeration error"));
     }
@@ -324,9 +352,7 @@ export function DockableModalProvider({
           totalModals={modals.length}
           profileData={modal.profileData}
         >
-          <ModalCallProvider>
-            {modal.content}
-          </ModalCallProvider>
+          <ModalCallProvider>{modal.content}</ModalCallProvider>
         </DockableModal>
       ))}
     </DockableModalContext.Provider>

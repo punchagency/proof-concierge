@@ -183,28 +183,15 @@ export async function fetchTransferredQueries(filters?: FilterParams): Promise<T
 }
 
 // Resolve a query
-export async function resolveQuery(id: number, resolvedBy: string | number): Promise<boolean> {
+export async function resolveQuery(id: number): Promise<DonorQuery | null> {
   try {
-    // Ensure resolvedById is a number
-    let resolvedById: number;
-    
-    if (typeof resolvedBy === 'number') {
-      resolvedById = resolvedBy;
-    } else if (typeof resolvedBy === 'string' && !isNaN(Number(resolvedBy))) {
-      resolvedById = Number(resolvedBy);
-    } else {
-      console.warn(`Invalid resolvedBy value: ${resolvedBy}, defaulting to user ID 1`);
-      resolvedById = 1; // Default to user ID 1 if not a valid number
-    }
-    
-    console.log(`Resolving query ${id} with user ID ${resolvedById}`);
+    console.log(`Resolving query ${id}`);
     
     const response = await fetchWithAuth(`${API_BASE_URL}/donor-queries/${id}/resolve`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ resolvedById }),
     });
 
     if (!response.ok) {
@@ -213,10 +200,11 @@ export async function resolveQuery(id: number, resolvedBy: string | number): Pro
       throw new Error(`Failed to resolve query: ${response.statusText}`);
     }
 
-    return true;
+    const resolvedQueryData = await response.json();
+    return resolvedQueryData.data;
   } catch (error) {
     console.error('Error in resolveQuery:', error);
-    return false;
+    return null;
   }
 }
 

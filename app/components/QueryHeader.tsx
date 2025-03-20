@@ -5,10 +5,13 @@ import Filter from "@/icons/Filter";
 import { FilterDropdown } from "./FilterDropdown";
 import { useState, useEffect } from "react";
 import { GeneralQuery } from "@/lib/api/donor-queries";
+import { useQueryRefresh } from "@/app/donor-queries/page";
+import { RefreshCcw } from "lucide-react";
 
 export function QueryHeader() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const { triggerRefresh, refreshing } = useQueryRefresh();
 
   // Initialize the component after mount
   useEffect(() => {
@@ -20,6 +23,10 @@ export function QueryHeader() {
     // The FilterDropdown component now directly calls the handler functions
     // This function is kept for backward compatibility
     console.log("Filtered data received in QueryHeader:", filteredData.length);
+  };
+
+  const handleManualRefresh = () => {
+    triggerRefresh();
   };
 
   return (
@@ -36,6 +43,14 @@ export function QueryHeader() {
             className="rounded-[12px] border-[1px] border-[#E3E6EB] h-[40px] w-[40px] flex justify-center items-center hover:bg-gray-50 active:bg-gray-100 transition-colors"
           >
             <Search className="text-[#4D5B6B]" />
+          </button>
+          <button 
+            className={`rounded-[12px] border-[1px] border-[#E3E6EB] h-[40px] w-[40px] flex justify-center items-center hover:bg-gray-50 active:bg-gray-100 transition-colors ${refreshing ? 'bg-blue-50' : ''}`}
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            title="Refresh data"
+          >
+            <RefreshCcw className={`h-5 w-5 text-[#4D5B6B] ${refreshing ? 'animate-spin text-blue-500' : ''}`} />
           </button>
           <button 
             className="rounded-[12px] border-[1px] border-[#E3E6EB] h-[40px] w-[40px] flex justify-center items-center hover:bg-gray-50 active:bg-gray-100 transition-colors"

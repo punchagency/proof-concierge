@@ -21,6 +21,9 @@ export default function TransferredQueries() {
   const fetchData = async (filters?: FilterParams) => {
     setLoading(true);
     try {
+      // Save filters to window for background refresh
+      (window as any).__currentTransferredFilters = filters;
+      
       const queries = await fetchTransferredQueries(filters);
       setData(queries || []);
       setIsFiltered(!!filters && Object.values(filters).some(value => !!value));

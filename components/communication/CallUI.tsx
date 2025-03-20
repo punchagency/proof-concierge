@@ -387,8 +387,7 @@ function AudioDeviceSelector() {
       console.error(`Error changing audio ${type} device:`, error);
       toast.error(`Failed to change audio ${type} device`);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [daily, isTesting]);
+  }, [daily, isTesting, stopMicrophoneTest]);
 
   // Now define loadAudioDevices with useCallback
   const loadAudioDevices = useCallback(async () => {
@@ -741,11 +740,11 @@ export function CallUI({ onLeave }: CallUIProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullyJoined, setIsFullyJoined] = useState(false);
-  const [connectionState, setConnectionState] = useState<string>("connecting");
+  const [connectionState,] = useState<string>("connecting");
   const [dailyInitError, setDailyInitError] = useState<string | null>(null);
   const [meetingState, setMeetingState] = useState<string>("connecting");
   const meetingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [meetingDuration, setMeetingDuration] = useState(0);
+  const [, setMeetingDuration] = useState(0);
   const [callState] = useAtom(callStateAtom);
 
   // Sort participant IDs to ensure consistent order
@@ -1025,7 +1024,7 @@ export function CallUI({ onLeave }: CallUIProps) {
       console.log("Screen sharing stopped");
       setIsScreenSharing(false);
     }
-  }, [screens, isScreenSharing]);
+  }, [screens, isScreenSharing, setIsScreenSharing]);
 
   // Handle ending the call
   const handleEndCall = useCallback(() => {

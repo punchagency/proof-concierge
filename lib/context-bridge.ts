@@ -25,11 +25,22 @@ interface ContextBridge {
   } | undefined;
 }
 
+interface InternalContextBridge extends ContextBridge {
+  __dockableModalContext?: {
+    openModal: (
+      id: string,
+      content: React.ReactNode,
+      profileData: { name: string; image: string; status: string }
+    ) => void;
+    closeModal: (id: string) => void;
+  };
+}
+
 // Singleton object for sharing context references
-const contextBridge: ContextBridge = {
+const contextBridge: InternalContextBridge = {
   // Function to register the dockable modal context
   registerDockableModalContext: (openModal, closeModal) => {
-    (contextBridge as any).__dockableModalContext = {
+    (contextBridge).__dockableModalContext = {
       openModal,
       closeModal
     };
@@ -37,7 +48,7 @@ const contextBridge: ContextBridge = {
   
   // Function to get the dockable modal context
   getDockableModalContext: () => {
-    return (contextBridge as any).__dockableModalContext;
+    return (contextBridge).__dockableModalContext;
   }
 };
 

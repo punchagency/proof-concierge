@@ -21,6 +21,9 @@ export default function GeneralQueries() {
   const fetchData = async (filters?: FilterParams) => {
     setLoading(true);
     try {
+      // Save filters to window for background refresh
+      (window as any).__currentGeneralFilters = filters;
+      
       const queries = await fetchGeneralQueries(filters);
       setData(queries || []);
       setIsFiltered(!!filters && Object.values(filters).some(value => !!value));

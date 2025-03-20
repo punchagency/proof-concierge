@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useQueryRefresh } from "@/app/donor-queries/page";
 
 interface AdminUser {
   id: number;
@@ -53,13 +54,15 @@ export function QueryActions({
   const [isTransferToUserDialogOpen, setIsTransferToUserDialogOpen] =
     useState(false);
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
-  const [resolvedBy, setResolvedBy] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [importantNote, setImportantNote] = useState("");
   const [reminderMessage, setReminderMessage] = useState("");
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { startVideoCall, startAudioCall, isInCall } = useCallManager();
+
+  // Get the refresh function from the context
+  const { triggerRefresh } = useQueryRefresh();
 
   // Fetch admin users when the component mounts
   useEffect(() => {
@@ -74,17 +77,17 @@ export function QueryActions({
   }, []);
 
   const handleResolve = async () => {
-    if (!resolvedBy.trim()) {
-      toast.error("Please enter who resolved this query");
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const success = await resolveQuery(query.id, resolvedBy);
-      if (success) {
-        toast.success("Query has been resolved");
+      const resolvedQuery = await resolveQuery(query.id);
+      if (resolvedQuery) {
+        toast.success("Query has been resolved successfully");
         setIsResolveDialogOpen(false);
+        
+        // Trigger the global refresh to update all tabs
+        triggerRefresh();
+        
+        // Then call the local callback
         onActionComplete();
       } else {
         toast.error("Failed to resolve query");
@@ -113,6 +116,11 @@ export function QueryActions({
       if (success) {
         toast.success("Query has been transferred to user");
         setIsTransferToUserDialogOpen(false);
+        
+        // Trigger the global refresh to update all tabs
+        triggerRefresh();
+        
+        // Then call the local callback
         onActionComplete();
       } else {
         toast.error("Failed to transfer query to user");
@@ -165,6 +173,9 @@ export function QueryActions({
         toast.success(`Reminder sent to ${query.transferredTo}`);
         setIsReminderDialogOpen(false);
         setReminderMessage("");
+        
+        // Trigger the global refresh
+        triggerRefresh();
       } else {
         toast.error("Failed to send reminder");
       }
@@ -270,21 +281,10 @@ export function QueryActions({
         <DialogContent onClick={stopPropagation}>
           <DialogHeader>
             <DialogTitle>Resolve Query</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to mark this query as resolved?
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="resolvedBy" className="text-right">
-                Resolved By
-              </Label>
-              <Input
-                id="resolvedBy"
-                value={resolvedBy}
-                onChange={(e) => setResolvedBy(e.target.value)}
-                className="col-span-3"
-                placeholder="Enter your name"
-              />
-            </div>
-          </div>
           <DialogFooter>
             <Button
               variant="outline"
