@@ -20,7 +20,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let firebaseApp: any;
+let firebaseApp: ReturnType<typeof initializeApp> | null = null;
 let messagingInstance: Messaging | null = null;
 
 /**
@@ -173,7 +173,7 @@ export const requestFCMPermission = async (): Promise<string | null> => {
         // Use safer type checking for the brave property
         (typeof navigator !== 'undefined' && 
         'brave' in navigator && 
-        (navigator as any).brave !== undefined) || 
+        (navigator as { brave?: unknown }).brave !== undefined) || 
         (navigator.userAgent.includes("Chrome") && 
         navigator.userAgent.includes("Safari") && 
         !navigator.userAgent.includes("Edg") && 

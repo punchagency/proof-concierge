@@ -24,6 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger 
 } from '@/components/ui/tooltip';
+import { Notification } from '@/lib/websocket/socket-service';
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -128,7 +129,7 @@ export function NotificationBell() {
     }
   };
 
-  const formatNotificationTitle = (notification: any) => {
+  const formatNotificationTitle = (notification: Notification) => {
     switch (notification.type) {
       case 'queryStatusChanged':
         return `Query #${notification.queryId} status changed`;

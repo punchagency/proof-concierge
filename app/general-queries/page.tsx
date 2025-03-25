@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { useQueryDataWithRealtime } from '@/lib/hooks/useQueryDataWithRealtime';
-import { DonorQuery } from '@/types/donor-query';
 import { useQueryRefresh } from '@/lib/contexts/query-refresh-context';
 import QueryStatusToggle from '@/components/queries/QueryStatusToggle';
+import { DonorQuery } from '@/lib/api/donor-queries';
 
 export default function GeneralQueriesPage() {
-  const { queries, isLoading, error, refreshQueries } = useQueryDataWithRealtime('GENERAL');
+  const { queries, isLoading, error } = useQueryDataWithRealtime('GENERAL');
   const { triggerRefresh } = useQueryRefresh();
 
   // Handle manual refresh

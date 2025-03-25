@@ -12,6 +12,21 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://proof-conci
 
 type QueryStatus = 'IN_PROGRESS' | 'PENDING_REPLY' | 'RESOLVED' | 'TRANSFERRED' | 'GENERAL';
 
+// Define types for socket events - using Record<string, unknown> for base type compatibility
+interface NewQueryEvent extends Record<string, unknown> {
+  query: DonorQuery;
+}
+
+interface QueryStatusChangedEvent extends Record<string, unknown> {
+  queryId: number;
+  status: string;
+}
+
+interface QueryAssignedEvent extends Record<string, unknown> {
+  queryId: number;
+  userId: number;
+}
+
 /**
  * Custom hook for fetching and listening to real-time updates for query lists.
  * 
@@ -97,27 +112,29 @@ export function useQueryDataWithRealtime(status: QueryStatus) {
     // Set up WebSocket listeners for real-time updates
     const setupListeners = () => {
       // Listen for new queries
-      const newQueryUnsubscribe = socketService.on('newQuery', (data) => {
+      const newQueryUnsubscribe = socketService.on('newQuery', (data: Record<string, unknown>) => {
+        const queryData = data as NewQueryEvent;
         
         // Only add to list if the status matches our current view
-        if (status === 'GENERAL' || data.query?.status === status) {
+        if (queryData.query && (status === 'GENERAL' || String(queryData.query.status) === String(status))) {
           setQueries(prev => {
             // Check if query already exists to avoid duplicates
-            const exists = prev.some(q => q.id === data.query.id);
+            const exists = prev.some(q => q.id === queryData.query.id);
             if (exists) return prev;
-            return [...prev, data.query];
+            return [...prev, queryData.query] as DonorQuery[];
           });
         }
       });
       
       // Listen for query status changes
-      const statusChangeUnsubscribe = socketService.on('queryStatusChanged', (data) => {
-        const { queryId, status: newStatus } = data;
+      const statusChangeUnsubscribe = socketService.on('queryStatusChanged', (data: Record<string, unknown>) => {
+        const statusData = data as QueryStatusChangedEvent;
+        const { queryId, status: newStatus } = statusData;
         
         // If this query should now be in our list, fetch it
-        if (newStatus === status) {
+        if (String(newStatus) === String(status)) {
           // Option 1: Fetch the specific query and add it
-          fetchQueryById(queryId).then(query => {
+          fetchQueryById(Number(queryId)).then(query => {
             if (query) {
               setQueries(prev => {
                 // Check if query already exists to avoid duplicates
@@ -134,18 +151,27 @@ export function useQueryDataWithRealtime(status: QueryStatus) {
       });
       
       // Listen for query updates (transfers, assigns, etc.)
-      const queryUpdatedUnsubscribe = socketService.on('queryTransferred', (data) => {
+      const queryUpdatedUnsubscribe = socketService.on('queryTransferred', () => {
         // Refresh the list to get the latest changes
         fetchQueries();
       });
       
-      const queryAssignedUnsubscribe = socketService.on('queryAssigned', (data) => {
+      const queryAssignedUnsubscribe = socketService.on('queryAssigned', (data: Record<string, unknown>) => {
+        const assignData = data as QueryAssignedEvent;
         // Update the specific query in our list
-        const { queryId, userId } = data;
+        const { queryId, userId } = assignData;
         
         setQueries(prev => prev.map(q => {
           if (q.id === queryId) {
-            return { ...q, assignedToId: userId };
+            return { 
+              ...q, 
+              assignedToId: userId,
+              assignedToUser: q.assignedToUser || { 
+                id: userId, 
+                name: 'Admin', // Default name, will be updated on next fetch
+                role: 'admin'
+              }
+            };
           }
           return q;
         }));

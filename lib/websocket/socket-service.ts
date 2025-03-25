@@ -22,13 +22,20 @@ export interface Notification {
   content?: string;
   sender?: string;
   timestamp: string;
-  data?: any;
+  data?: Record<string, unknown>;
+}
+
+// Define socket response type
+interface SocketResponse {
+  success: boolean;
+  message?: string;
+  [key: string]: unknown;
 }
 
 class SocketService {
   private socket: Socket | null = null;
   private apiUrl: string;
-  private listeners: Map<string, Set<(data: any) => void>> = new Map();
+  private listeners: Map<string, Set<(data: Record<string, unknown>) => void>> = new Map();
 
   constructor() {
     this.apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL_SOCKET || "http://localhost:5005";
@@ -77,7 +84,7 @@ class SocketService {
       return;
     }
 
-    this.socket.emit("joinQueryRoom", { queryId }, (response: any) => {
+    this.socket.emit("joinQueryRoom", { queryId }, (response: SocketResponse) => {
       console.log(`Joined query room ${queryId}:`, response);
     });
   }
@@ -89,13 +96,13 @@ class SocketService {
       return;
     }
 
-    this.socket.emit("leaveQueryRoom", { queryId }, (response: any) => {
+    this.socket.emit("leaveQueryRoom", { queryId }, (response: SocketResponse) => {
       console.log(`Left query room ${queryId}:`, response);
     });
   }
 
   // Add listener for notification events
-  on(event: string, callback: (data: any) => void) {
+  on(event: string, callback: (data: Record<string, unknown>) => void) {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
@@ -111,7 +118,7 @@ class SocketService {
   }
 
   // Remove listener
-  off(event: string, callback: (data: any) => void) {
+  off(event: string, callback: (data: Record<string, unknown>) => void) {
     const callbacks = this.listeners.get(event);
     if (callbacks) {
       callbacks.delete(callback);

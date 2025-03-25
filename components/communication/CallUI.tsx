@@ -24,7 +24,6 @@ import {
   ChevronDown,
   Settings,
 } from "lucide-react";
-import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   isMutedAtom,
@@ -58,13 +57,6 @@ import {
 
 interface CallUIProps {
   onLeave: () => void;
-}
-
-// Define interfaces for Daily.co types
-interface DailyInputDevices {
-  audioDeviceId?: string;
-  videoDeviceId?: string;
-  speakerDeviceId?: string;
 }
 
 // Interface to match Daily.co's getInputDevices() return type
@@ -880,9 +872,6 @@ export function CallUI({ onLeave }: CallUIProps) {
           }
         }
 
-        // Verify audio transmission capabilities
-        const mediaState = daily.participants().local?.tracks;
-
         // Add network stats reporting for audio transmission verification
         const startAudioStats = async () => {
           try {
@@ -925,7 +914,6 @@ export function CallUI({ onLeave }: CallUIProps) {
     // Create audio level tracker
     let lastAudioActivity = 0;
     let noAudioCount = 0;
-    let hasShownTransmissionToast = false;
 
     const checkAudioTransmission = () => {
       try {
@@ -941,8 +929,7 @@ export function CallUI({ onLeave }: CallUIProps) {
 
         // Log significant audio activity changes but don't show toast
         if (audioActivity > 30 && lastAudioActivity < 30) {
-          // Track that audio is transmitting but don't show toast
-          hasShownTransmissionToast = true;
+          // Reset no audio count when we detect activity
           noAudioCount = 0;
         }
 

@@ -11,7 +11,6 @@ import { ChatPanel } from '../chat/ChatPanel';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { useAuth } from '@/lib/auth/auth-context';
 import { blueToast } from '@/lib/utils';
 import { useAtom } from 'jotai';
 import { callStateAtom, endCallAtom } from '@/lib/atoms/callState';
@@ -41,7 +40,6 @@ interface DockableQueryModalProps {
 
 export function DockableQueryModal({ data, initiallyAccepted = false }: DockableQueryModalProps) {
   const router = useRouter();
-  const { user } = useAuth();
   
   // Core states
   const [isAccepted, setIsAccepted] = useState(false);
@@ -199,9 +197,7 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
     }
     
     setIsResolving(true);
-    try {
-      const userId = user?.id || 1;
-      
+    try {      
       const success = await resolveQuery(data.id);
       
       if (success) {

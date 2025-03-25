@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { useQueryDataWithRealtime } from '@/lib/hooks/useQueryDataWithRealtime';
-import { DonorQuery } from '@/types/donor-query';
+import { DonorQuery } from '@/lib/api/donor-queries';
 import { useQueryRefresh } from '@/lib/contexts/query-refresh-context';
 
 export default function InProgressQueriesPage() {
-  const { queries, isLoading, error, refreshQueries } = useQueryDataWithRealtime('IN_PROGRESS');
+  const { queries, isLoading, error } = useQueryDataWithRealtime('IN_PROGRESS');
   const { triggerRefresh } = useQueryRefresh();
 
   // Handle manual refresh

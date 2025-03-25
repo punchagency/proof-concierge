@@ -73,7 +73,7 @@ const validateRoomUrl = (url: string): string => {
     // Ensure URL is properly formatted
     const parsedUrl = new URL(trimmedUrl);
     return parsedUrl.toString();
-  } catch (error) {
+  } catch {
     // Try to fix common issues
     if (!trimmedUrl.startsWith('http')) {
       try {
@@ -81,14 +81,14 @@ const validateRoomUrl = (url: string): string => {
         const withProtocol = `https://${trimmedUrl}`;
         new URL(withProtocol); // Validate it's a proper URL now
         return withProtocol;
-      } catch (e) {
+      } catch {
         // If it's not a valid URL even with protocol, try to construct a valid daily.co URL
         try {
           // Assume it's a room name and construct prooftest.daily.co URL
           const asRoomName = `https://prooftest.daily.co/${trimmedUrl}`;
           new URL(asRoomName); // Validate it's a proper URL
           return asRoomName;
-        } catch (e2) {
+        } catch {
           console.error("Failed to create a valid URL from:", trimmedUrl);
           return "";
         }
@@ -123,7 +123,7 @@ export function DailyCall({ roomUrl, roomToken, mode, children }: DailyCallProps
           new URL(fallbackUrl); // Check if valid
           setValidatedUrl(fallbackUrl);
           setInitError(null);
-        } catch (e) {
+        } catch {
           setInitError(`Invalid room URL format: ${roomUrl}`);
         }
       }
@@ -195,11 +195,8 @@ export function DailyCall({ roomUrl, roomToken, mode, children }: DailyCallProps
         url={validatedUrl}
         token={roomToken}
         dailyConfig={{
-          experimentalChromeVideoTrackSettings: {
-            width: { max: 1280 },
-            height: { max: 720 },
-            frameRate: { max: 30 }
-          }
+          // Video quality settings can be configured in standard properties
+          // instead of using experimental settings
         }}
       >
         <ErrorBoundary fallback={

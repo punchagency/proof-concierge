@@ -15,7 +15,6 @@ import { Video, Phone, X } from "lucide-react";
 import { useCallManager } from "@/components/providers/CallManagerProvider";
 import { useAtom } from "jotai";
 import { callStateAtom, startCallAtom } from "@/lib/atoms/callState";
-import { CallModal } from "../communication/CallModal";
 import {
   acceptCallRequestById,
   getCallSessionById,
@@ -976,7 +975,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             const pathParts = urlObj.pathname.split("/").filter(Boolean);
             roomName =
               pathParts.length > 0 ? pathParts[pathParts.length - 1] : "";
-          } catch (urlError) {
+          } catch {
             // Fallback to using the existing room name if available
             roomName = message.callSession.roomName || "";
           }

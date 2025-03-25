@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
+import { GeneralQuery } from '@/lib/api/donor-queries';
+
+type QueryData = GeneralQuery & {
+  [key: string]: unknown;
+};
 
 interface QueryDebugProps {
-  data: any;
-  apiResponse?: any;
+  data: QueryData;
+  apiResponse?: Record<string, unknown>;
 }
 
 /**

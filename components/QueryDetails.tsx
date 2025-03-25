@@ -22,7 +22,7 @@ export function QueryDetails({ data }: QueryDetailsProps) {
   const [activeTab, setActiveTab] = useState("details");
   const [isAccepting, setIsAccepting] = useState(false);
   const [isAlreadyAccepted, setIsAlreadyAccepted] = useState(false);
-  const [apiResponse, setApiResponse] = useState<any>(null);
+  const [apiResponse, setApiResponse] = useState<Record<string, unknown> | undefined>(undefined);
 
   // Check if this query is already accepted/assigned
   useEffect(() => {
@@ -224,7 +224,10 @@ export function QueryDetails({ data }: QueryDetailsProps) {
       </Tabs>
       
       {/* Debug component - only visible in development */}
-      <QueryDebug data={data} apiResponse={apiResponse} />
+      <QueryDebug 
+        data={data as GeneralQueriesProps & { [key: string]: unknown }}
+        apiResponse={apiResponse} 
+      />
     </div>
   );
 } 

@@ -9,6 +9,18 @@ import { useAtom } from "jotai";
 import { callStateAtom, startCallAtom, endCallAtom, isMutedAtom, isVideoOffAtom, isScreenSharingAtom } from "@/lib/atoms/callState";
 import contextBridge from "@/lib/context-bridge";
 
+// Custom error interface for API responses
+interface ApiError extends Error {
+  response?: {
+    status: number;
+    data: {
+      statusCode?: number;
+      message?: string;
+      [key: string]: unknown;
+    };
+  };
+}
+
 interface ProfileData {
   name: string;
   image: string;
@@ -122,7 +134,7 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
     try {
       new URL(roomUrl);
       return roomUrl;
-    } catch (e) {
+    } catch {
       // URL is not valid, try to fix it
       console.warn("Room URL is not valid, attempting to correct:", roomUrl);
       
@@ -218,13 +230,14 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
           />,
           profileData
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Reset the query mode if call creation failed
         await updateQueryMode(queryId, "Text");
         
         // Handle specific error for active calls
-        if (error?.response?.data?.statusCode === 500 && 
-            error?.response?.data?.message?.includes("already an active call")) {
+        const apiError = error as ApiError;
+        if (apiError?.response?.data?.statusCode === 500 && 
+            apiError?.response?.data?.message?.includes("already an active call")) {
           toast.error("There is already an active call for this query. Please end the existing call before starting a new one.");
           return;
         }
@@ -304,13 +317,14 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
           />,
           profileData
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Reset the query mode if call creation failed
         await updateQueryMode(queryId, "Text");
         
         // Handle specific error for active calls
-        if (error?.response?.data?.statusCode === 500 && 
-            error?.response?.data?.message?.includes("already an active call")) {
+        const apiError = error as ApiError;
+        if (apiError?.response?.data?.statusCode === 500 && 
+            apiError?.response?.data?.message?.includes("already an active call")) {
           toast.error("There is already an active call for this query. Please end the existing call before starting a new one.");
           return;
         }

@@ -5,6 +5,14 @@ import { fetchWithAuth } from "./fetch-utils";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5005/api/v1";
 
+// Custom error interface for API responses
+interface ApiError extends Error {
+  response?: {
+    status: number;
+    data: Record<string, unknown>;
+  };
+}
+
 /**
  * Service for handling communication with the backend for video and audio calls
  */
@@ -43,7 +51,6 @@ export async function startQueryCall(
   queryId: number,
   donorId: string,
   mode: CallMode,
-  expiryMinutes: number = 60
 ) {
   try {
     const response = await fetchWithAuth(
@@ -68,8 +75,8 @@ export async function startQueryCall(
       // Create enhanced error with response data
       const error = new Error(
         `Failed to start call: ${response.status} ${response.statusText}`
-      );
-      (error as any).response = {
+      ) as ApiError;
+      error.response = {
         status: response.status,
         data: errorData,
       };
@@ -81,7 +88,7 @@ export async function startQueryCall(
     return data;
   } catch (error) {
     // If the error was already formatted with response data, rethrow it
-    if ((error as any).response) {
+    if ((error as ApiError).response) {
       throw error;
     }
 

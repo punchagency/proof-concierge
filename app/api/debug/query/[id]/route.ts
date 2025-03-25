@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
     // Only available in dev mode
     if (process.env.NODE_ENV !== 'development') {
@@ -13,10 +10,15 @@ export async function GET(
       );
     }
     
-    const id = params.id;
+    // Extract the ID from the URL path
+    const pathParts = request.nextUrl.pathname.split('/');
+    const id = pathParts[pathParts.length - 1];
     
-    // Get the auth token from localStorage via cookies
-    const token = req.cookies.get('auth_token')?.value;
+    // Access any query parameters if needed
+    const { searchParams } = new URL(request.url);
+    
+    // Get the auth token from cookies
+    const token = request.cookies.get('auth_token')?.value;
     
     // Construct and log the request that would be made
     const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005/api/v1';
@@ -49,6 +51,7 @@ export async function GET(
         timestamp: new Date().toISOString(),
         queryId: id,
         apiUrl: url,
+        searchParams: Object.fromEntries(searchParams.entries()),
         tokenPresent: !!token,
         environment: process.env.NODE_ENV,
       },

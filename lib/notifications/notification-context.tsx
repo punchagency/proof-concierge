@@ -6,9 +6,9 @@ import React, {
   useEffect,
   useState,
   ReactNode,
+  useCallback,
 } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/auth-context";
 import socketService, {
   Notification,
@@ -74,12 +74,96 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     setFcmSupported(hasServiceWorker && hasNotification);
   }, []);
 
+  // Show toast notification based on type
+  const showNotificationToast = useCallback((type: NotificationType, data: Record<string, unknown> | undefined) => {
+    if (!data) return;
+    
+    switch (type) {
+      case "newMessage":
+        blueToast(
+          "New Message",
+          {
+            description: `${data.sender || "Someone"} sent a new message`,
+            action: data.queryId
+              ? {
+                  label: "View",
+                  onClick: () => router.push(`/donor-queries/${data.queryId}`),
+                }
+              : undefined,
+          },
+          "info"
+        );
+        break;
+
+      case "queryStatusChanged":
+        blueToast(
+          "Query Status Changed",
+          {
+            description: `Query #${data.queryId} changed to ${data.status}`,
+            action: {
+              label: "View",
+              onClick: () => router.push(`/donor-queries/${data.queryId}`),
+            },
+          },
+          "info"
+        );
+        break;
+
+      case "newQuery":
+        blueToast(
+          "New Support Ticket",
+          {
+            description: `New query from ${data.donor || "a donor"}`,
+            action: {
+              label: "View",
+              onClick: () => router.push("/general-queries"),
+            },
+          },
+          "success"
+        );
+        break;
+
+      case "callRequested":
+        blueToast(
+          "Call Requested",
+          {
+            description: `A ${
+              data.mode || "video"
+            } call was requested for query #${data.queryId}`,
+            action: {
+              label: "View",
+              onClick: () => router.push(`/donor-queries/${data.queryId}`),
+            },
+          },
+          "info"
+        );
+        break;
+
+      // Add more cases as needed
+
+      default:
+        // Generic toast for other notification types
+        blueToast(
+          "New Notification",
+          {
+            description: (data.content as string) || `You have a new ${type} notification`,
+            action: data.queryId
+              ? {
+                  label: "View",
+                  onClick: () => router.push(`/donor-queries/${data.queryId}`),
+                }
+              : undefined,
+          },
+          "info"
+        );
+    }
+  }, [router]);
+
   // Initialize WebSocket connection when authenticated
   useEffect(() => {
     if (!isAuthenticated || !token) return;
 
     // Connect to the WebSocket server
-    const socket = socketService.connect(token);
     setHasWebSocketConnection(socketService.isConnected());
 
     // Set up notification event listeners
@@ -99,7 +183,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     });
 
     // Handle notification
-    function handleNotification(type: NotificationType, data: any) {
+    function handleNotification(type: NotificationType, data: Record<string, unknown>) {
       const newNotification: Notification = {
         type,
         ...data,
@@ -124,7 +208,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       socketService.disconnect();
       setHasWebSocketConnection(false);
     };
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, showNotificationToast]);
 
   // Initialize Firebase Cloud Messaging
   useEffect(() => {
@@ -226,90 +310,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     }
 
     // No cleanup needed since we're handling it in the recursive function
-  }, [isAuthenticated, user, router, fcmSupported]);
-
-  // Show toast notification based on type
-  const showNotificationToast = (type: NotificationType, data: any) => {
-    switch (type) {
-      case "newMessage":
-        blueToast(
-          "New Message",
-          {
-            description: `${data.sender || "Someone"} sent a new message`,
-            action: data.queryId
-              ? {
-                  label: "View",
-                  onClick: () => router.push(`/donor-queries/${data.queryId}`),
-                }
-              : undefined,
-          },
-          "info"
-        );
-        break;
-
-      case "queryStatusChanged":
-        blueToast(
-          "Query Status Changed",
-          {
-            description: `Query #${data.queryId} changed to ${data.status}`,
-            action: {
-              label: "View",
-              onClick: () => router.push(`/donor-queries/${data.queryId}`),
-            },
-          },
-          "info"
-        );
-        break;
-
-      case "newQuery":
-        blueToast(
-          "New Support Ticket",
-          {
-            description: `New query from ${data.donor || "a donor"}`,
-            action: {
-              label: "View",
-              onClick: () => router.push("/general-queries"),
-            },
-          },
-          "success"
-        );
-        break;
-
-      case "callRequested":
-        blueToast(
-          "Call Requested",
-          {
-            description: `A ${
-              data.mode || "video"
-            } call was requested for query #${data.queryId}`,
-            action: {
-              label: "View",
-              onClick: () => router.push(`/donor-queries/${data.queryId}`),
-            },
-          },
-          "info"
-        );
-        break;
-
-      // Add more cases as needed
-
-      default:
-        // Generic toast for other notification types
-        blueToast(
-          "New Notification",
-          {
-            description: data.content || `You have a new ${type} notification`,
-            action: data.queryId
-              ? {
-                  label: "View",
-                  onClick: () => router.push(`/donor-queries/${data.queryId}`),
-                }
-              : undefined,
-          },
-          "info"
-        );
-    }
-  };
+  }, [isAuthenticated, user, router, fcmSupported, showNotificationToast]);
 
   // Mark all notifications as read
   const markAsRead = () => {

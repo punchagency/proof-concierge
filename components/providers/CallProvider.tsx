@@ -29,7 +29,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const [callState, setCallState] = useState<CallState>({
     isActive: false,
   });
-  const [isStartingCall, setIsStartingCall] = useState(false);
+  const [, setIsStartingCall] = useState(false);
   const callAttemptRef = useRef(0);
 
   // Helper function to clean up Daily.co iframes

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { Notification as AppNotification } from '@/lib/websocket/socket-service';
 
 export default function NotificationBell() {
   const { 
@@ -27,7 +28,7 @@ export default function NotificationBell() {
   const router = useRouter();
 
   // Handle notification click
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = (notification: AppNotification) => {
     // Navigate based on notification type
     if (notification.queryId) {
       router.push(`/donor-queries/${notification.queryId}`);
@@ -137,20 +138,20 @@ function getNotificationTitle(type: string): string {
 }
 
 // Helper function to get notification content
-function getNotificationContent(notification: any): string {
+function getNotificationContent(notification: AppNotification): string {
   switch (notification.type) {
     case 'newMessage':
       return notification.content || `${notification.sender || 'Someone'} sent a new message`;
     case 'queryStatusChanged':
       return `Query #${notification.queryId} changed to ${notification.status}`;
     case 'newQuery':
-      return `New query from ${notification.donor || 'a donor'}`;
+      return `New query from ${notification.sender || 'a donor'}`;
     case 'queryTransferred':
-      return `Query #${notification.queryId} was transferred to ${notification.toUser || 'another admin'}`;
+      return `Query #${notification.queryId} was transferred to ${notification.sender || 'another admin'}`;
     case 'queryAssigned':
       return `Query #${notification.queryId} was assigned to you`;
     case 'callRequested':
-      return `A ${notification.mode || 'video'} call was requested for query #${notification.queryId}`;
+      return `A ${notification.content || 'video'} call was requested for query #${notification.queryId}`;
     case 'callStatusChanged':
       return `Call for query #${notification.queryId} changed to ${notification.status}`;
     default:

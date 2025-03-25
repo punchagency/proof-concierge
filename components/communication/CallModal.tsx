@@ -38,7 +38,7 @@ export function CallModal({
       daily.leave().then(() => {
         endCall();
         onClose();
-      }).catch(err => {
+      }).catch(() => {
         // Still try to end the call even if there was an error leaving
         endCall();
         onClose();

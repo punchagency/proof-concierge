@@ -29,6 +29,7 @@ export interface DonorQuery {
     name: string;
     role: string;
   };
+  assignedToId?: number;
   transferredTo?: string;
   transferNote?: string;
 }
@@ -222,7 +223,15 @@ export async function resolveQuery(id: number): Promise<DonorQuery | null> {
         console.error(`Failed to resolve query ${id}. Status: ${response.status}`, errorData);
         errorMessage = errorData.message || response.statusText;
       } catch {
-        errorMessage = await response.text();
+        // If response isn't JSON, get it as text
+        try {
+          const textError = await response.text();
+          console.error('Error response text:', textError);
+          errorMessage = textError || errorMessage;
+          sessionStorage.setItem('lastQueryError', errorMessage);
+        } catch (textError) {
+          console.error('Failed to get error text', textError);
+        }
       }
       throw new Error(`Failed to resolve query: ${errorMessage}`);
     }
@@ -410,7 +419,7 @@ export async function acceptQuery(id: number): Promise<boolean> {
         
         // Store the error message in sessionStorage
         sessionStorage.setItem('lastQueryError', errorMessage);
-      } catch (parseError) {
+      } catch {
         // If response isn't JSON, get it as text
         try {
           const textError = await response.text();
