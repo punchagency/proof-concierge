@@ -92,20 +92,33 @@ const constructDailyUrl = (roomName: string) => {
   // Clean up the room name to handle potential edge cases
   const cleanedRoomName = roomName.trim();
   
-  // If it already includes protocol, return as is
+  // If it already includes protocol, ensure URL is valid
   if (cleanedRoomName.startsWith("http://") || cleanedRoomName.startsWith("https://")) {
     console.log("URL already has protocol:", cleanedRoomName);
-    return cleanedRoomName;
+    try {
+      // Validate URL format
+      new URL(cleanedRoomName);
+      return cleanedRoomName;
+    } catch (error) {
+      console.error("Invalid URL format despite having protocol:", error);
+      // Will try to fix it below
+    }
   }
 
   // If it's a domain with daily.co
   if (cleanedRoomName.includes("daily.co")) {
     // If it's missing the protocol, add https://
     if (!cleanedRoomName.startsWith("http")) {
-      console.log("Adding https to daily.co domain:", cleanedRoomName);
-      return `https://${cleanedRoomName}`;
+      const fixedUrl = `https://${cleanedRoomName}`;
+      console.log("Adding https to daily.co domain:", fixedUrl);
+      try {
+        // Validate the fixed URL
+        new URL(fixedUrl);
+        return fixedUrl;
+      } catch (error) {
+        console.error("Invalid daily.co URL format after adding protocol:", error);
+      }
     }
-    return cleanedRoomName;
   }
 
   // Handle the case of roomName like "prooftest/xyz123"
@@ -116,13 +129,28 @@ const constructDailyUrl = (roomName: string) => {
     const room = parts[parts.length - 1];
     
     // If domain is prooftest or something similar, construct properly
-    console.log(`Constructing URL from domain "${domain}" and room "${room}"`);
-    return `https://${domain}.daily.co/${room}`;
+    const fixedUrl = `https://${domain}.daily.co/${room}`;
+    console.log(`Constructing URL from domain "${domain}" and room "${room}": ${fixedUrl}`);
+    try {
+      // Validate the fixed URL
+      new URL(fixedUrl);
+      return fixedUrl;
+    } catch (error) {
+      console.error("Invalid URL format after constructing from parts:", error);
+    }
   }
 
   // Default case: assume it's just a room name for the prooftest domain
-  console.log("Constructing URL with default domain for room:", cleanedRoomName);
-  return `https://prooftest.daily.co/${cleanedRoomName}`;
+  const defaultUrl = `https://prooftest.daily.co/${cleanedRoomName}`;
+  console.log("Constructing URL with default domain for room:", defaultUrl);
+  try {
+    // Validate the default URL
+    new URL(defaultUrl);
+    return defaultUrl;
+  } catch (error) {
+    console.error("Invalid default URL format:", error);
+    return "";
+  }
 };
 
 export function ChatPanel({ donorQueryId }: ChatPanelProps) {
