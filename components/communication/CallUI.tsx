@@ -67,6 +67,17 @@ interface DailyInputDevices {
   speakerDeviceId?: string;
 }
 
+// Interface to match Daily.co's getInputDevices() return type
+interface DailyDeviceInfos {
+  camera?: MediaDeviceInfo;
+  mic?: MediaDeviceInfo;
+  speaker?: MediaDeviceInfo;
+  // These are the actual properties used internally
+  audioInput?: MediaDeviceInfo;
+  videoInput?: MediaDeviceInfo;
+  audioOutput?: MediaDeviceInfo;
+}
+
 interface DailyAudioStats {
   audio?: {
     send?: {
@@ -388,14 +399,16 @@ function AudioDeviceSelector() {
           stopMicrophoneTest();
         }
 
-        // Prepare device configuration
-        const deviceConfig: Partial<DailyInputDevices> = {};
+        // Prepare device configuration using the correct Daily.co properties
+        const deviceConfig: Record<string, string> = {};
 
         if (type === "input") {
-          deviceConfig.audioDeviceId = deviceId;
+          // Use "audioInput" instead of "audioDeviceId" for Daily.co API
+          deviceConfig.audioInput = deviceId;
           setSelectedInputDevice(deviceId);
         } else {
-          deviceConfig.speakerDeviceId = deviceId;
+          // Use "audioOutput" instead of "speakerDeviceId" for Daily.co API
+          deviceConfig.audioOutput = deviceId;
           setSelectedOutputDevice(deviceId);
         }
 
@@ -435,8 +448,11 @@ function AudioDeviceSelector() {
           const inputDevices = await daily.getInputDevices();
 
           if (inputDevices && typeof inputDevices === "object") {
-            // Get input device
-            const audioInputId = inputDevices.audioDeviceId || "";
+            // Get input device - properly access properties from DailyDeviceInfos
+            const deviceInfos = inputDevices as unknown as DailyDeviceInfos;
+            const audioInput = deviceInfos.mic || deviceInfos.audioInput;
+            const audioInputId = audioInput?.deviceId || "";
+            
             if (audioInputId) {
               setSelectedInputDevice(audioInputId);
             } else if (inputs.length > 0) {
@@ -454,8 +470,10 @@ function AudioDeviceSelector() {
               }
             }
 
-            // Get output device
-            const audioOutputId = inputDevices.speakerDeviceId || "";
+            // Get output device - properly access properties from DailyDeviceInfos
+            const audioOutput = deviceInfos.speaker || deviceInfos.audioOutput;
+            const audioOutputId = audioOutput?.deviceId || "";
+            
             if (audioOutputId) {
               setSelectedOutputDevice(audioOutputId);
             } else if (outputs.length > 0) {
