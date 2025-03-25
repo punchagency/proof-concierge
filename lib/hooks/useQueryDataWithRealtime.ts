@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/auth-context';
 import socketService from '@/lib/websocket/socket-service';
 import { fetchWithAuth } from '@/lib/api/fetch-utils';
-import { DonorQuery } from '@/types/donor-query';
 import { useQueryRefresh } from '@/lib/contexts/query-refresh-context';
+import { DonorQuery } from '../api/donor-queries';
 
 // Define the API base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com';
@@ -98,7 +98,6 @@ export function useQueryDataWithRealtime(status: QueryStatus) {
     const setupListeners = () => {
       // Listen for new queries
       const newQueryUnsubscribe = socketService.on('newQuery', (data) => {
-        console.log('Received newQuery event:', data);
         
         // Only add to list if the status matches our current view
         if (status === 'GENERAL' || data.query?.status === status) {
@@ -113,7 +112,6 @@ export function useQueryDataWithRealtime(status: QueryStatus) {
       
       // Listen for query status changes
       const statusChangeUnsubscribe = socketService.on('queryStatusChanged', (data) => {
-        console.log('Received queryStatusChanged event:', data);
         const { queryId, status: newStatus } = data;
         
         // If this query should now be in our list, fetch it
@@ -137,13 +135,11 @@ export function useQueryDataWithRealtime(status: QueryStatus) {
       
       // Listen for query updates (transfers, assigns, etc.)
       const queryUpdatedUnsubscribe = socketService.on('queryTransferred', (data) => {
-        console.log('Received queryTransferred event:', data);
         // Refresh the list to get the latest changes
         fetchQueries();
       });
       
       const queryAssignedUnsubscribe = socketService.on('queryAssigned', (data) => {
-        console.log('Received queryAssigned event:', data);
         // Update the specific query in our list
         const { queryId, userId } = data;
         

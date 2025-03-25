@@ -6,9 +6,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:50
 
 // Update the FCM token for the current user
 export async function updateUserFCMToken(fcmToken: string): Promise<boolean> {
-  try {
-    console.log('Updating FCM token:', fcmToken);
-    
+  try {    
     const response = await fetchWithAuth(`${API_BASE_URL}/users/me/fcm-token`, {
       method: 'PUT',
       headers: {

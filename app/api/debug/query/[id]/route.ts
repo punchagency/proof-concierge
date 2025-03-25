@@ -22,9 +22,6 @@ export async function GET(
     const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005/api/v1';
     const url = `${API_BASE_URL}/donor-queries/${id}`;
     
-    console.log(`[DEBUG] Fetching query details from: ${url}`);
-    console.log(`[DEBUG] Auth token present: ${!!token}`);
-    
     // Get details about the current query
     let queryDetails = null;
     

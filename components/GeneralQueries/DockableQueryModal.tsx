@@ -17,6 +17,7 @@ import { useAtom } from 'jotai';
 import { callStateAtom, endCallAtom } from '@/lib/atoms/callState';
 import { DailyCall } from '../communication/DailyCall';
 import { CallUI } from '../communication/CallUI';
+import contextBridge from '@/lib/context-bridge';
 
 // Interface for admin users
 interface AdminUser {
@@ -172,6 +173,14 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
         toast.success(`Query transferred successfully`);
         router.refresh();
         setTransferDialogOpen(false);
+        
+        // Get modal context and close this modal
+        const modalContext = contextBridge.getDockableModalContext();
+        if (modalContext) {
+          setTimeout(() => {
+            modalContext.closeModal(`query-${data.id}`);
+          }, 500); // Short delay to let the success message be seen
+        }
       } else {
         toast.error("Failed to transfer query");
       }
@@ -192,7 +201,6 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
     setIsResolving(true);
     try {
       const userId = user?.id || 1;
-      console.log(`Resolving query ${data.id} with user ID ${userId}`);
       
       const success = await resolveQuery(data.id);
       
@@ -200,6 +208,14 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
         toast.success(`Query resolved successfully`);
         router.refresh();
         setResolveDialogOpen(false);
+        
+        // Get modal context and close this modal
+        const modalContext = contextBridge.getDockableModalContext();
+        if (modalContext) {
+          setTimeout(() => {
+            modalContext.closeModal(`query-${data.id}`);
+          }, 500); // Short delay to let the success message be seen
+        }
       } else {
         toast.error("Failed to resolve query");
       }

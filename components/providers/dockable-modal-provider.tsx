@@ -234,8 +234,6 @@ export function DockableModalProvider({
       // If no call is active, we're done
       if (!isActiveCall) return;
 
-      console.log("Ending call due to modal closing");
-
       // Immediately end call state for UI responsiveness
       endCall();
 
@@ -297,9 +295,6 @@ export function DockableModalProvider({
         const stream = mediaElement.srcObject;
         stream.getTracks().forEach((track) => {
           track.stop();
-          console.log(
-            `Stopped track: ${track.kind}, enabled: ${track.enabled}, state: ${track.readyState}`
-          );
         });
         mediaElement.srcObject = null;
       }
@@ -312,7 +307,6 @@ export function DockableModalProvider({
         (iframe.src.includes("daily") ||
           iframe.hasAttribute("data-daily-iframe"))
       ) {
-        console.log(`Removing Daily iframe: ${iframe.src}`);
         iframe.remove();
       }
     });
@@ -325,7 +319,6 @@ export function DockableModalProvider({
         .then((stream) => {
           stream.getTracks().forEach((track) => {
             track.stop();
-            console.log(`Stopped media track: ${track.kind}`);
           });
         })
         .catch(() => console.log("No media streams to stop"));

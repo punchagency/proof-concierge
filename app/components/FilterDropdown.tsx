@@ -3,9 +3,23 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronDown, Calendar as CalendarIcon } from "lucide-react";
 import { createPortal } from "react-dom";
-import { FilterParams, QueryMode, QueryStatus, fetchGeneralQueries, fetchTransferredQueries, fetchResolvedQueries, GeneralQuery, TransferredQuery, ResolvedQuery } from "@/lib/api/donor-queries";
+import {
+  FilterParams,
+  QueryMode,
+  QueryStatus,
+  fetchGeneralQueries,
+  fetchTransferredQueries,
+  fetchResolvedQueries,
+  GeneralQuery,
+  TransferredQuery,
+  ResolvedQuery,
+} from "@/lib/api/donor-queries";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -33,8 +47,10 @@ function CustomSelect({
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find((opt) => opt.value === value);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
-  
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
+    null
+  );
+
   useEffect(() => {
     // Only set the portal container when the component mounts in the browser
     setPortalContainer(document.body);
@@ -42,12 +58,12 @@ function CustomSelect({
 
   const getDropdownPosition = () => {
     if (!buttonRef.current) return { top: 0, left: 0 };
-    
+
     const rect = buttonRef.current.getBoundingClientRect();
     return {
       top: rect.bottom + window.scrollY + 4, // 4px of spacing
       left: rect.left + window.scrollX,
-      width: rect.width
+      width: rect.width,
     };
   };
 
@@ -61,7 +77,9 @@ function CustomSelect({
           onClick={() => setIsOpen(!isOpen)}
           className="w-[140px] rounded-[8px] border-[#C6CED6] border-[1px] px-3 py-1.5 text-[13px] font-semibold text-[#4D5B6B] bg-white hover:bg-gray-50 focus:outline-none flex items-center justify-between"
         >
-          <span className="truncate">{selectedOption?.label || placeholder}</span>
+          <span className="truncate">
+            {selectedOption?.label || placeholder}
+          </span>
           <ChevronDown
             className={`h-4 w-4 transition-transform duration-200 ${
               isOpen ? "rotate-180" : ""
@@ -69,11 +87,21 @@ function CustomSelect({
           />
         </button>
         {value && onClear && (
-          <button 
+          <button
             onClick={onClear}
             className="ml-1 text-gray-400 hover:text-gray-600"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -81,53 +109,60 @@ function CustomSelect({
         )}
       </div>
 
-      {isOpen && portalContainer && createPortal(
-        <>
-          <div
-            className="fixed inset-0 z-[99998]"
-            onClick={() => setIsOpen(false)}
-          />
-          
-          <div
-            className={`fixed z-[999999] bg-white border border-[#C6CED6] rounded-[8px] py-1 shadow-lg ${
-              isOpen ? "animate-bounce-in" : ""
-            }`}
-            style={{
-              top: `${position.top}px`,
-              left: `${position.left}px`,
-              width: `${position.width}px`
-            }}
-          >
-            {options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full text-left px-3 py-1.5 text-[13px] font-semibold hover:bg-gray-50 ${
-                  value === option.value
-                    ? "text-[#4D5B6B] bg-gray-50"
-                    : "text-gray-600"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </>,
-        portalContainer
-      )}
+      {isOpen &&
+        portalContainer &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[99998]"
+              onClick={() => setIsOpen(false)}
+            />
+
+            <div
+              className={`fixed z-[999999] bg-white border border-[#C6CED6] rounded-[8px] py-1 shadow-lg ${
+                isOpen ? "animate-bounce-in" : ""
+              }`}
+              style={{
+                top: `${position.top}px`,
+                left: `${position.left}px`,
+                width: `${position.width}px`,
+              }}
+            >
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-[13px] font-semibold hover:bg-gray-50 ${
+                    value === option.value
+                      ? "text-[#4D5B6B] bg-gray-50"
+                      : "text-gray-600"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </>,
+          portalContainer
+        )}
     </div>
   );
 }
 
 interface FilterDropdownProps {
   isOpen: boolean;
-  onApplyFilters?: (filteredData: (GeneralQuery | TransferredQuery | ResolvedQuery)[]) => void;
+  onApplyFilters?: (
+    filteredData: (GeneralQuery | TransferredQuery | ResolvedQuery)[]
+  ) => void;
 }
 
-export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) {
+export function FilterDropdown({
+  isOpen,
+  onApplyFilters,
+}: FilterDropdownProps) {
   // Always initialize state, even if not visible
   const [test, setTest] = useState("");
   const [stage, setStage] = useState("");
@@ -137,12 +172,12 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
   const [date, setDate] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<string>("general"); // Default to general tab
-  
+
   // Dynamic options that will be populated from actual data
   const [testOptions, setTestOptions] = useState<Option[]>([]);
   const [stageOptions, setStageOptions] = useState<Option[]>([]);
   const [deviceOptions, setDeviceOptions] = useState<Option[]>([]);
-  
+
   // Query mode options - these match the QueryMode enum
   const modeOptions = [
     { value: "Text", label: "Text" },
@@ -155,7 +190,7 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
     { value: "In Progress", label: "In Progress" },
     { value: "Pending Reply", label: "Pending Reply" },
   ];
-  
+
   // Full status options for other tabs
   const allStatusOptions = [
     { value: "In Progress", label: "In Progress" },
@@ -165,32 +200,39 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
   ];
 
   // Get the appropriate status options based on the active tab
-  const statusOptions = activeTab === 'general' ? generalStatusOptions : allStatusOptions;
+  const statusOptions =
+    activeTab === "general" ? generalStatusOptions : allStatusOptions;
 
   // Load active tab from localStorage on component mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedTab = localStorage.getItem('activeTab');
+    if (typeof window !== "undefined") {
+      const savedTab = localStorage.getItem("activeTab");
       if (savedTab) {
         setActiveTab(savedTab);
       }
-      
+
       // Set up a mutation observer to detect tab changes
       const tabsContainer = document.querySelector('[role="tablist"]');
       if (tabsContainer) {
         const observer = new MutationObserver(() => {
-          const activeTabElement = document.querySelector('[data-state="active"][role="tab"]');
+          const activeTabElement = document.querySelector(
+            '[data-state="active"][role="tab"]'
+          );
           if (activeTabElement) {
-            const tabValue = activeTabElement.getAttribute('data-value');
+            const tabValue = activeTabElement.getAttribute("data-value");
             if (tabValue && tabValue !== activeTab) {
               setActiveTab(tabValue);
-              localStorage.setItem('activeTab', tabValue);
+              localStorage.setItem("activeTab", tabValue);
             }
           }
         });
-        
-        observer.observe(tabsContainer, { attributes: true, childList: true, subtree: true });
-        
+
+        observer.observe(tabsContainer, {
+          attributes: true,
+          childList: true,
+          subtree: true,
+        });
+
         return () => observer.disconnect();
       }
     }
@@ -199,103 +241,100 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
   // Fetch all data to extract unique values for filter options
   useEffect(() => {
     if (!isOpen) return; // Only fetch when dropdown is open
-    
+
     async function fetchFilterOptions() {
       try {
-        console.log("Fetching filter options...");
         // Fetch data from all endpoints to extract unique values
         const [generalData, transferredData, resolvedData] = await Promise.all([
           fetchGeneralQueries(),
           fetchTransferredQueries(),
-          fetchResolvedQueries()
+          fetchResolvedQueries(),
         ]);
-        
-        console.log("Data fetched for options:", {
-          generalCount: generalData.length,
-          transferredCount: transferredData.length,
-          resolvedCount: resolvedData.length
-        });
-        
+
         // Combine all data
         const allData = [...generalData, ...transferredData, ...resolvedData];
-        
+
         // If no data is returned from the API, use mock data for testing
         if (allData.length === 0) {
-          console.log("No data returned from API, using mock data for testing");
-          
           // Mock test options
           const mockTestOptions = [
             { value: "Proof of Address", label: "Proof of Address" },
             { value: "Proof of Identity", label: "Proof of Identity" },
-            { value: "Proof of Income", label: "Proof of Income" }
+            { value: "Proof of Income", label: "Proof of Income" },
           ];
           setTestOptions(mockTestOptions);
-          
+
           // Mock stage options
           const mockStageOptions = [
             { value: "Document Upload", label: "Document Upload" },
             { value: "Document Verification", label: "Document Verification" },
-            { value: "Identity Verification", label: "Identity Verification" }
+            { value: "Identity Verification", label: "Identity Verification" },
           ];
           setStageOptions(mockStageOptions);
-          
+
           // Mock device options
           const mockDeviceOptions = [
             { value: "Mobile", label: "Mobile" },
             { value: "Desktop", label: "Desktop" },
-            { value: "Tablet", label: "Tablet" }
+            { value: "Tablet", label: "Tablet" },
           ];
           setDeviceOptions(mockDeviceOptions);
-          
+
           return;
         }
-        
+
         // Extract unique test types
-        const uniqueTests = [...new Set(allData.map(item => item.test))].filter(Boolean);
-        console.log("Unique tests:", uniqueTests);
-        setTestOptions(uniqueTests.map(test => ({ value: test, label: test })));
-        
+        const uniqueTests = [
+          ...new Set(allData.map((item) => item.test)),
+        ].filter(Boolean);
+        setTestOptions(
+          uniqueTests.map((test) => ({ value: test, label: test }))
+        );
+
         // Extract unique stages
-        const uniqueStages = [...new Set(allData.map(item => item.stage))].filter(Boolean);
-        console.log("Unique stages:", uniqueStages);
-        setStageOptions(uniqueStages.map(stage => ({ value: stage, label: stage })));
-        
+        const uniqueStages = [
+          ...new Set(allData.map((item) => item.stage)),
+        ].filter(Boolean);
+        setStageOptions(
+          uniqueStages.map((stage) => ({ value: stage, label: stage }))
+        );
+
         // Extract unique devices
-        const uniqueDevices = [...new Set(allData.map(item => item.device))].filter(Boolean);
-        console.log("Unique devices:", uniqueDevices);
-        setDeviceOptions(uniqueDevices.map(device => ({ value: device, label: device })));
+        const uniqueDevices = [
+          ...new Set(allData.map((item) => item.device)),
+        ].filter(Boolean);
+        setDeviceOptions(
+          uniqueDevices.map((device) => ({ value: device, label: device }))
+        );
       } catch (error) {
         console.error("Error fetching filter options:", error);
-        
-        // Use mock data in case of error
-        console.log("Error fetching data, using mock data for testing");
-        
+
         // Mock test options
         const mockTestOptions = [
           { value: "Proof of Address", label: "Proof of Address" },
           { value: "Proof of Identity", label: "Proof of Identity" },
-          { value: "Proof of Income", label: "Proof of Income" }
+          { value: "Proof of Income", label: "Proof of Income" },
         ];
         setTestOptions(mockTestOptions);
-        
+
         // Mock stage options
         const mockStageOptions = [
           { value: "Document Upload", label: "Document Upload" },
           { value: "Document Verification", label: "Document Verification" },
-          { value: "Identity Verification", label: "Identity Verification" }
+          { value: "Identity Verification", label: "Identity Verification" },
         ];
         setStageOptions(mockStageOptions);
-        
+
         // Mock device options
         const mockDeviceOptions = [
           { value: "Mobile", label: "Mobile" },
           { value: "Desktop", label: "Desktop" },
-          { value: "Tablet", label: "Tablet" }
+          { value: "Tablet", label: "Tablet" },
         ];
         setDeviceOptions(mockDeviceOptions);
       }
     }
-    
+
     fetchFilterOptions();
   }, [isOpen]);
 
@@ -306,99 +345,98 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
       const filters: FilterParams = {
         test: test || undefined,
         stage: stage || undefined,
-        queryMode: mode as QueryMode || undefined,
+        queryMode: (mode as QueryMode) || undefined,
         device: device || undefined,
         status: (status as QueryStatus) || undefined,
-        date: date || undefined
+        date: date || undefined,
       };
-      
-      console.log("Applying filters:", JSON.stringify(filters, null, 2));
-      console.log("Active tab:", activeTab);
-      
+
       // Fetch data based on the active tab
-      if (activeTab === 'general') {
-        console.log("Fetching filtered general data with filters:", JSON.stringify(filters, null, 2));
+      if (activeTab === "general") {
         // Remove status from filters for general queries
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { status: statusValue, ...generalFilters } = filters;
         const filteredData = await fetchGeneralQueries(generalFilters);
-        console.log("Filtered general data received:", filteredData?.length);
-        
+
         // Add a small delay to ensure the handler is registered
         setTimeout(() => {
           // Directly call the handler function on the window object
-          if (typeof window !== 'undefined') {
-            console.log("Window handlers available:", {
-              generalHandler: typeof (window as { handleFilteredGeneralQueries?: (data: GeneralQuery[]) => void }).handleFilteredGeneralQueries === 'function',
-              transferredHandler: typeof (window as { handleFilteredTransferredQueries?: (data: TransferredQuery[]) => void }).handleFilteredTransferredQueries === 'function',
-              resolvedHandler: typeof (window as { handleFilteredResolvedQueries?: (data: ResolvedQuery[]) => void }).handleFilteredResolvedQueries === 'function'
-            });
-            
-            const windowWithHandlers = window as { handleFilteredGeneralQueries?: (data: GeneralQuery[]) => void };
-            if (typeof windowWithHandlers.handleFilteredGeneralQueries === 'function') {
-              console.log("Calling handleFilteredGeneralQueries with data length:", filteredData?.length);
+          if (typeof window !== "undefined") {
+            const windowWithHandlers = window as {
+              handleFilteredGeneralQueries?: (data: GeneralQuery[]) => void;
+            };
+            if (
+              typeof windowWithHandlers.handleFilteredGeneralQueries ===
+              "function"
+            ) {
               windowWithHandlers.handleFilteredGeneralQueries(filteredData);
             } else {
-              console.error("handleFilteredGeneralQueries not found or not a function");
-              // Fallback: reload the page to refresh the data
-              console.log("Reloading page as fallback");
+              console.error(
+                "handleFilteredGeneralQueries not found or not a function"
+              );
+
               window.location.reload();
             }
           }
         }, 100);
-        
+
         // Pass filtered data to parent component if needed
         if (onApplyFilters) {
           onApplyFilters(filteredData);
         }
-      } else if (activeTab === 'transferred') {
-        console.log("Fetching filtered transferred data with filters:", JSON.stringify(filters, null, 2));
+      } else if (activeTab === "transferred") {
         const filteredData = await fetchTransferredQueries(filters);
-        console.log("Filtered transferred data received:", filteredData?.length);
-        
+
         // Add a small delay to ensure the handler is registered
         setTimeout(() => {
           // Directly call the handler function on the window object
-          if (typeof window !== 'undefined') {
-            const windowWithHandlers = window as { handleFilteredTransferredQueries?: (data: TransferredQuery[]) => void };
-            if (typeof windowWithHandlers.handleFilteredTransferredQueries === 'function') {
-              console.log("Calling handleFilteredTransferredQueries with data length:", filteredData?.length);
+          if (typeof window !== "undefined") {
+            const windowWithHandlers = window as {
+              handleFilteredTransferredQueries?: (
+                data: TransferredQuery[]
+              ) => void;
+            };
+            if (
+              typeof windowWithHandlers.handleFilteredTransferredQueries ===
+              "function"
+            ) {
               windowWithHandlers.handleFilteredTransferredQueries(filteredData);
             } else {
-              console.error("handleFilteredTransferredQueries not found or not a function");
-              // Fallback: reload the page to refresh the data
-              console.log("Reloading page as fallback");
+              console.error(
+                "handleFilteredTransferredQueries not found or not a function"
+              );
               window.location.reload();
             }
           }
         }, 100);
-        
+
         // Pass filtered data to parent component if needed
         if (onApplyFilters) {
           onApplyFilters(filteredData);
         }
-      } else if (activeTab === 'resolved') {
-        console.log("Fetching filtered resolved data with filters:", JSON.stringify(filters, null, 2));
+      } else if (activeTab === "resolved") {
         const filteredData = await fetchResolvedQueries(filters);
-        console.log("Filtered resolved data received:", filteredData?.length);
-        
         // Add a small delay to ensure the handler is registered
         setTimeout(() => {
           // Directly call the handler function on the window object
-          if (typeof window !== 'undefined') {
-            const windowWithHandlers = window as { handleFilteredResolvedQueries?: (data: ResolvedQuery[]) => void };
-            if (typeof windowWithHandlers.handleFilteredResolvedQueries === 'function') {
-              console.log("Calling handleFilteredResolvedQueries with data length:", filteredData?.length);
+          if (typeof window !== "undefined") {
+            const windowWithHandlers = window as {
+              handleFilteredResolvedQueries?: (data: ResolvedQuery[]) => void;
+            };
+            if (
+              typeof windowWithHandlers.handleFilteredResolvedQueries ===
+              "function"
+            ) {
               windowWithHandlers.handleFilteredResolvedQueries(filteredData);
             } else {
-              console.error("handleFilteredResolvedQueries not found or not a function");
-              // Fallback: reload the page to refresh the data
-              console.log("Reloading page as fallback");
+              console.error(
+                "handleFilteredResolvedQueries not found or not a function"
+              );
               window.location.reload();
             }
           }
         }, 100);
-        
+
         // Pass filtered data to parent component if needed
         if (onApplyFilters) {
           onApplyFilters(filteredData);
@@ -413,11 +451,28 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
   // Apply filters whenever any filter value changes
   useEffect(() => {
     // Only apply filters if the dropdown is open and at least one filter has been initialized
-    if (isOpen && (testOptions.length > 0 || stageOptions.length > 0 || deviceOptions.length > 0)) {
-      console.log("Filter values changed, applying filters");
+    if (
+      isOpen &&
+      (testOptions.length > 0 ||
+        stageOptions.length > 0 ||
+        deviceOptions.length > 0)
+    ) {
       applyFilters();
     }
-  }, [test, stage, mode, device, status, date, isOpen, activeTab, testOptions.length, stageOptions.length, deviceOptions.length, applyFilters]);
+  }, [
+    test,
+    stage,
+    mode,
+    device,
+    status,
+    date,
+    isOpen,
+    activeTab,
+    testOptions.length,
+    stageOptions.length,
+    deviceOptions.length,
+    applyFilters,
+  ]);
 
   const handleClearTest = () => {
     setTest("");
@@ -456,7 +511,7 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
   // Update date when selectedDate changes
   useEffect(() => {
     if (selectedDate) {
-      setDate(format(selectedDate, 'yyyy-MM-dd'));
+      setDate(format(selectedDate, "yyyy-MM-dd"));
     }
   }, [selectedDate]);
 
@@ -509,7 +564,9 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={`w-[140px] rounded-[8px] border-[#C6CED6] border-[1px] px-3 py-1.5 text-[13px] font-semibold text-[#4D5B6B] bg-white hover:bg-gray-50 focus:outline-none flex items-center justify-between ${!date ? "text-muted-foreground" : ""}`}
+                  className={`w-[140px] rounded-[8px] border-[#C6CED6] border-[1px] px-3 py-1.5 text-[13px] font-semibold text-[#4D5B6B] bg-white hover:bg-gray-50 focus:outline-none flex items-center justify-between ${
+                    !date ? "text-muted-foreground" : ""
+                  }`}
                 >
                   {date ? format(new Date(date), "PPP") : "Select date"}
                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -525,11 +582,21 @@ export function FilterDropdown({ isOpen, onApplyFilters }: FilterDropdownProps) 
               </PopoverContent>
             </Popover>
             {date && (
-              <button 
+              <button
                 onClick={handleClearDate}
                 className="ml-1 text-gray-400 hover:text-gray-600"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>

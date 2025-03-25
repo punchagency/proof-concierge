@@ -14,10 +14,6 @@ export async function createCall(
   expiryMinutes: number = 60
 ) {
   try {
-    console.log(
-      `Creating ${mode} call for user ${userId} with expiry ${expiryMinutes} minutes`
-    );
-
     const response = await fetchWithAuth(`${API_BASE_URL}/communication/call`, {
       method: "POST",
       headers: {
@@ -33,7 +29,6 @@ export async function createCall(
     });
 
     const data = await response.json();
-    console.log("Call created successfully:", data);
     return data;
   } catch (error) {
     console.error("Error creating call:", error);
@@ -51,10 +46,6 @@ export async function startQueryCall(
   expiryMinutes: number = 60
 ) {
   try {
-    console.log(
-      `Starting ${mode} call for query ${queryId} with donor ${donorId}`
-    );
-
     const response = await fetchWithAuth(
       `${API_BASE_URL}/communication/call/${queryId}`,
       {
@@ -104,8 +95,6 @@ export async function startQueryCall(
  */
 export async function endCall(roomName: string) {
   try {
-    console.log(`Ending call in room: ${roomName}`);
-
     const response = await fetchWithAuth(
       `${API_BASE_URL}/communication/call/${roomName}/end`,
       {
@@ -117,7 +106,6 @@ export async function endCall(roomName: string) {
     );
 
     const data = await response.json();
-    console.log("Call ended successfully:", data);
     return data;
   } catch (error) {
     console.error("Error ending call:", error);
@@ -130,8 +118,6 @@ export async function endCall(roomName: string) {
  */
 export async function updateQueryMode(queryId: number, queryMode: string) {
   try {
-    console.log(`Updating query ${queryId} mode to ${queryMode}`);
-
     const response = await fetchWithAuth(
       `${API_BASE_URL}/donor-queries/${queryId}`,
       {
@@ -146,7 +132,6 @@ export async function updateQueryMode(queryId: number, queryMode: string) {
     );
 
     const data = await response.json();
-    console.log("Query mode updated successfully:", data);
     return data;
   } catch (error) {
     console.error("Error updating query mode:", error);
@@ -167,8 +152,6 @@ export async function requestCall(
   message?: string
 ) {
   try {
-    console.log(`Requesting ${mode} call for query ${queryId}`);
-
     const response = await fetchWithAuth(
       `${API_BASE_URL}/communication/request-call`,
       {
@@ -185,7 +168,6 @@ export async function requestCall(
     );
 
     const data = await response.json();
-    console.log("Call request sent successfully:", data);
     return data;
   } catch (error) {
     console.error("Error requesting call:", error);
@@ -201,8 +183,6 @@ export async function requestCall(
  */
 export async function acceptCallRequest(requestId: number, queryId: number) {
   try {
-    console.log(`Accepting call request ${requestId} for query ${queryId}`);
-
     const response = await fetchWithAuth(
       `${API_BASE_URL}/communication/${queryId}`,
       {
@@ -218,7 +198,6 @@ export async function acceptCallRequest(requestId: number, queryId: number) {
     );
 
     const data = await response.json();
-    console.log("Call request accepted successfully:", data);
     return data;
   } catch (error) {
     console.error("Error accepting call request:", error);
@@ -239,8 +218,6 @@ export async function rejectCallRequest(
   reason?: string
 ) {
   try {
-    console.log(`Rejecting call request ${requestId} for query ${queryId}`);
-
     const response = await fetchWithAuth(
       `${API_BASE_URL}/communication/${queryId}`,
       {
@@ -257,7 +234,6 @@ export async function rejectCallRequest(
     );
 
     const data = await response.json();
-    console.log("Call request rejected successfully:", data);
     return data;
   } catch (error) {
     console.error("Error rejecting call request:", error);
@@ -272,8 +248,6 @@ export async function rejectCallRequest(
  */
 export async function getCallRequestHistory(queryId: number) {
   try {
-    console.log(`Fetching call request history for query ${queryId}`);
-
     const response = await fetchWithAuth(
       `${API_BASE_URL}/communication/call-requests/${queryId}`,
       {
@@ -282,7 +256,6 @@ export async function getCallRequestHistory(queryId: number) {
     );
 
     const data = await response.json();
-    console.log("Call request history fetched successfully:", data);
     return data;
   } catch (error) {
     console.error("Error fetching call request history:", error);
@@ -297,8 +270,6 @@ export async function getCallRequestHistory(queryId: number) {
  */
 export async function cancelCallRequest(requestId: string) {
   try {
-    console.log(`Cancelling call request ${requestId}`);
-
     const response = await fetchWithAuth(
       `${API_BASE_URL}/communication/cancel-call-request`,
       {
@@ -313,7 +284,6 @@ export async function cancelCallRequest(requestId: string) {
     );
 
     const data = await response.json();
-    console.log("Call request cancelled successfully:", data);
     return data;
   } catch (error) {
     console.error("Error cancelling call request:", error);
@@ -332,8 +302,6 @@ export async function acceptCallRequestById(
   requestId: number
 ) {
   try {
-    console.log(`Accepting call request ${requestId} for query ${queryId}`);
-
     const response = await fetchWithAuth(
       `${API_BASE_URL}/communication/call/${queryId}/accept-request/${requestId}`,
       {
@@ -363,7 +331,6 @@ export async function acceptCallRequestById(
     }
 
     const result = await response.json();
-    console.log("Call request accepted successfully:", result);
     return result;
   } catch (error) {
     console.error("Error accepting call request:", error);
@@ -378,8 +345,6 @@ export async function acceptCallRequestById(
  */
 export async function getCallSessionById(callSessionId: number) {
   try {
-    console.log(`Fetching call session details for ID ${callSessionId}`);
-
     const response = await fetchWithAuth(
       `${API_BASE_URL}/communication/call-session/${callSessionId}`,
       {
@@ -406,7 +371,6 @@ export async function getCallSessionById(callSessionId: number) {
     }
 
     const result = await response.json();
-    console.log("Call session details retrieved:", result);
     return result;
   } catch (error) {
     console.error("Error fetching call session details:", error);

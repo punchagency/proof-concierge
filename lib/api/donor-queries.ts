@@ -81,7 +81,6 @@ export async function fetchGeneralQueries(filters?: FilterParams): Promise<Gener
     }
     const queryString = queryParams.toString();
     
-    console.log(`Making request to: ${API_BASE_URL}/donor-queries/general${queryString ? `?${queryString}` : ''}`);
     // Fetch general queries using the combined endpoint
     const url = `${API_BASE_URL}/donor-queries/general${queryString ? `?${queryString}` : ''}`;
     const response = await fetchWithAuth(url);
@@ -126,7 +125,6 @@ export async function fetchResolvedQueries(filters?: FilterParams): Promise<Reso
     }
     const queryString = queryParams.toString();
     
-    console.log(`Making request to: ${API_BASE_URL}/donor-queries/resolved${queryString ? `?${queryString}` : ''}`);
     // Fetch resolved queries
     const url = `${API_BASE_URL}/donor-queries/resolved${queryString ? `?${queryString}` : ''}`;
     const response = await fetchWithAuth(url);
@@ -177,7 +175,6 @@ export async function fetchTransferredQueries(filters?: FilterParams): Promise<T
     }
     const queryString = queryParams.toString();
     
-    console.log(`Making request to: ${API_BASE_URL}/donor-queries/transferred${queryString ? `?${queryString}` : ''}`);
     // Fetch transferred queries
     const url = `${API_BASE_URL}/donor-queries/transferred${queryString ? `?${queryString}` : ''}`;
     const response = await fetchWithAuth(url);
@@ -210,7 +207,6 @@ export async function fetchTransferredQueries(filters?: FilterParams): Promise<T
 // Resolve a query
 export async function resolveQuery(id: number): Promise<DonorQuery | null> {
   try {
-    console.log(`Resolving query ${id}`);
     
     const response = await fetchWithAuth(`${API_BASE_URL}/donor-queries/${id}/resolve`, {
       method: 'PATCH',
@@ -370,9 +366,7 @@ export async function sendQueryReminder(queryId: number, message?: string) {
  * @returns A boolean indicating whether the operation was successful
  */
 export async function acceptQuery(id: number): Promise<boolean> {
-  try {
-    console.log(`Attempting to accept query with ID: ${id}`);
-    
+  try {    
     // Input validation
     if (!id || isNaN(id) || id <= 0) {
       console.error('Invalid query ID provided:', id);
@@ -391,8 +385,6 @@ export async function acceptQuery(id: number): Promise<boolean> {
     
     // Log the exact URL and request details for debugging
     const url = `${API_BASE_URL}/donor-queries/${id}/accept`;
-    console.log(`Making accept query request to: ${url}`);
-    console.log(`Request method: PATCH`);
     
     // Make the request to accept the query
     const response = await fetchWithAuth(url, {
@@ -402,9 +394,6 @@ export async function acceptQuery(id: number): Promise<boolean> {
         'Content-Type': 'application/json',
       },
     });
-
-    // Log response status for debugging
-    console.log(`Accept query response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       let errorMessage = `Status: ${response.status} ${response.statusText}`;
@@ -472,7 +461,6 @@ export async function acceptQuery(id: number): Promise<boolean> {
     // Process successful response
     try {
       const data = await response.json();
-      console.log('Query accepted successfully:', data);
       
       // Update query statuses in localStorage
       try {
@@ -486,7 +474,6 @@ export async function acceptQuery(id: number): Promise<boolean> {
         };
         
         localStorage.setItem('queryStatuses', JSON.stringify(statuses));
-        console.log('Updated queryStatuses in localStorage:', statuses);
       } catch (e) {
         console.error('Error updating local query status:', e);
       }

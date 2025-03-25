@@ -34,14 +34,11 @@ export function CallModal({
   const daily = useDaily();
 
   const handleLeave = () => {
-    console.log("Ending call from handleLeave");
     if (daily) {
       daily.leave().then(() => {
-        console.log("Successfully left the Daily call from modal");
         endCall();
         onClose();
       }).catch(err => {
-        console.error("Error leaving the Daily call from modal:", err);
         // Still try to end the call even if there was an error leaving
         endCall();
         onClose();
@@ -56,7 +53,6 @@ export function CallModal({
   // Make sure call state is active when modal is open
   useEffect(() => {
     if (isOpen && !callState.isActive && callState.roomUrl && callState.roomToken) {
-      console.log("Modal is open but call state is inactive - activating");
       setCallState(prev => ({
         ...prev,
         isActive: true
@@ -76,18 +72,6 @@ export function CallModal({
       setIsConnecting(false);
     }
   }, [isOpen]);
-
-  // Debug call state changes
-  useEffect(() => {
-    console.log("CallModal debug - Current call state:", {
-      isOpen,
-      callStateActive: callState.isActive,
-      hasRoomUrl: !!callState.roomUrl,
-      hasRoomToken: !!callState.roomToken,
-      mode: callState.mode,
-      isConnecting
-    });
-  }, [isOpen, callState, isConnecting]);
 
   // Ensure profile data reflects the current call state
   const callProfileData = {

@@ -40,14 +40,12 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         "iframe[data-daily-iframe]"
       );
       if (existingIframes.length > 0) {
-        console.log(`Cleaning up ${existingIframes.length} Daily iframe(s)`);
         existingIframes.forEach((iframe) => iframe.remove());
       }
 
       // Also look for any iframe with daily in the src
       const otherIframes = document.querySelectorAll('iframe[src*="daily"]');
       if (otherIframes.length > 0) {
-        console.log(`Cleaning up ${otherIframes.length} other Daily iframe(s)`);
         otherIframes.forEach((iframe) => iframe.remove());
       }
 
@@ -66,7 +64,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (callState.callInstance) {
         try {
-          console.log("Component unmounting, cleaning up call instance");
           callState.callInstance.destroy();
         } catch (error) {
           console.error("Error destroying call instance:", error);
@@ -80,17 +77,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   const startCall = async (userId: number, mode: CallMode) => {
     try {
-      // Prevent multiple simultaneous call starts
-      if (isStartingCall) {
-        console.log(
-          "Call start already in progress, ignoring duplicate request"
-        );
-        return;
-      }
 
       // Check if a Daily iframe already exists globally
       if (dailyIframeExists) {
-        console.log("Daily iframe already exists globally, cleaning up first");
         cleanupDailyIframes();
       }
 
@@ -100,19 +89,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
       // End any existing call first
       if (callState.isActive && callState.callInstance) {
-        console.log("Ending existing call before starting a new one");
         await endCurrentCall();
       }
 
-      console.log(`Starting ${mode} call with user ID: ${userId}`);
-
       // Create a new call
       const response = await createCall(userId, mode);
-      console.log("Call created successfully:", response);
 
       // If another attempt has started, abort this one
       if (currentAttempt !== callAttemptRef.current) {
-        console.log("Newer call attempt in progress, aborting this one");
         setIsStartingCall(false);
         return;
       }
@@ -135,7 +119,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       dailyIframeExists = true;
 
       // Create the Daily.co iframe
-      console.log("Creating new Daily iframe");
       const callInstance = DailyIframe.createFrame({
         iframeStyle: {
           width: "100%",
@@ -149,7 +132,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
       // Set up event listeners
       callInstance.on("left-meeting", () => {
-        console.log("User left the meeting");
         setCallState((prev) => ({
           ...prev,
           isActive: false,
@@ -158,13 +140,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         dailyIframeExists = false;
       });
 
-      callInstance.on("joining-meeting", () => {
-        console.log("Joining meeting...");
-      });
+      // callInstance.on("joining-meeting", () => {
+      //   console.log("Joining meeting...");
+      // });
 
-      callInstance.on("joined-meeting", () => {
-        console.log("Successfully joined meeting");
-      });
+      // callInstance.on("joined-meeting", () => {
+      //   console.log("Successfully joined meeting");
+      // });
 
       callInstance.on("error", (error: DailyEventObjectFatalError) => {
         console.error("Daily.co error:", error);
@@ -173,7 +155,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       });
 
       // Join the call
-      console.log("Joining call with URL:", roomData.roomUrl);
       await callInstance.join({
         url: roomData.roomUrl,
         token: roomData.roomToken,
@@ -203,7 +184,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const endCurrentCall = async () => {
     try {
       if (callState.isActive && callState.callInstance) {
-        console.log("Ending call...");
 
         // Leave the call
         await callState.callInstance.leave();
@@ -211,7 +191,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
         // Delete the room on the server
         if (callState.roomData) {
-          console.log("Deleting room:", callState.roomData.roomName);
           await endCall(callState.roomData.roomName);
         }
 
@@ -226,7 +205,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         // Clean up any lingering iframes
         cleanupDailyIframes();
 
-        console.log("Call ended successfully");
       }
     } catch (error) {
       console.error("Failed to end call:", error);
@@ -244,7 +222,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const toggleAudio = () => {
     if (callState.callInstance) {
       const audioState = callState.callInstance.localAudio();
-      console.log(`Toggling audio: ${audioState ? "off" : "on"}`);
       callState.callInstance.setLocalAudio(!audioState);
     }
   };
@@ -252,7 +229,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const toggleVideo = () => {
     if (callState.callInstance && callState.roomData?.mode === CallMode.VIDEO) {
       const videoState = callState.callInstance.localVideo();
-      console.log(`Toggling video: ${videoState ? "off" : "on"}`);
       callState.callInstance.setLocalVideo(!videoState);
     }
   };

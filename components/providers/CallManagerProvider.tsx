@@ -164,9 +164,7 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
       // Create a call room
       try {
         const callResponse = await startQueryCall(queryId, userId.toString(), CallMode.VIDEO);
-        
-        console.log("Video call response:", callResponse);
-        
+                
         // Validate required data
         if (!callResponse?.data?.admin?.roomName) {
           throw new Error("Missing room name in call response");
@@ -252,9 +250,7 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
       // Create a call room
       try {
         const callResponse = await startQueryCall(queryId, userId.toString(), CallMode.AUDIO);
-        
-        console.log("Audio call response:", callResponse);
-        
+                
         // Validate required data
         if (!callResponse?.data?.admin?.roomName) {
           throw new Error("Missing room name in call response");

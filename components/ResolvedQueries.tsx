@@ -38,7 +38,6 @@ export default function ResolvedQueries() {
 
   // Function to handle filtered data from FilterDropdown
   const handleFilteredData = useCallback((filteredData: ResolvedQueriesProps[]) => {
-    console.log("ResolvedQueries received filtered data:", filteredData?.length);
     setData(filteredData || []);
     
     // Check if any filters are applied
@@ -52,7 +51,6 @@ export default function ResolvedQueries() {
   // Register the handler function on the window object when component mounts
   useEffect(() => {
     const handler = (filteredData: ResolvedQueriesProps[]) => {
-      console.log("Window handler called with filtered data:", filteredData?.length);
       handleFilteredData(filteredData);
     };
     

@@ -59,13 +59,6 @@ export function DataTable<TData, TValue>({
         id: Number(queryData.id)
       };
 
-      console.log('Opening query modal with data:', {
-        id: originalQuery.id,
-        status: originalQuery.status,
-        assignedToUser: originalQuery.assignedToUser,
-        isAlreadyAccepted
-      });
-
       openModal(
         `query-${queryData.id}`,
         <DockableQueryModal

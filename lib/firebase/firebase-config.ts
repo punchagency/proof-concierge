@@ -68,13 +68,11 @@ const initializeFirebaseApp = () => {
     if (!firebaseApp) {
       // Initialize the app if it hasn't been initialized yet
       firebaseApp = initializeApp(firebaseConfig);
-      console.log('Firebase app initialized successfully');
     }
     
     // Check if browser supports Firebase messaging
     if ('serviceWorker' in navigator && !messagingInstance) {
       messagingInstance = getMessaging(firebaseApp);
-      console.log('Firebase messaging initialized successfully');
     }
     
     return firebaseApp;

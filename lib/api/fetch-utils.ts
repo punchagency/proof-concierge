@@ -12,10 +12,6 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
   // Get the auth token from localStorage
   const token = localStorage.getItem('auth_token');
   
-  // Log authentication status (for debugging)
-  console.log(`Fetching authenticated request to: ${url}`);
-  console.log(`Auth token exists: ${!!token}`);
-  
   // Create headers with auth token if available
   const headers = {
     ...(options.headers || {}),

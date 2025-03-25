@@ -1,5 +1,5 @@
-import { atom } from 'jotai';
-import { CallMode } from '@/types/communication';
+import { atom } from "jotai";
+import { CallMode } from "@/types/communication";
 
 // Call state interface
 export interface CallState {
@@ -35,13 +35,9 @@ const initialCallState: CallState = {
 export const callStateAtom = atom<CallState>(initialCallState);
 
 // Derived atoms for specific state values
-export const isCallActiveAtom = atom(
-  (get) => get(callStateAtom).isActive
-);
+export const isCallActiveAtom = atom((get) => get(callStateAtom).isActive);
 
-export const callModeAtom = atom(
-  (get) => get(callStateAtom).mode
-);
+export const callModeAtom = atom((get) => get(callStateAtom).mode);
 
 export const isMutedAtom = atom(
   (get) => get(callStateAtom).isMuted,
@@ -86,17 +82,18 @@ export const participantCountAtom = atom(
 // Action atoms
 export const startCallAtom = atom(
   null,
-  (get, set, params: { queryId: number; userId: number; mode: CallMode; roomUrl: string; roomToken: string; roomName: string }) => {
-    console.log("Starting call with parameters:", {
-      queryId: params.queryId,
-      userId: params.userId,
-      mode: params.mode,
-      roomUrl: params.roomUrl,
-      roomName: params.roomName,
-      tokenLength: params.roomToken?.length,
-      tokenStart: params.roomToken?.substring(0, 15) + "..."
-    });
-    
+  (
+    get,
+    set,
+    params: {
+      queryId: number;
+      userId: number;
+      mode: CallMode;
+      roomUrl: string;
+      roomToken: string;
+      roomName: string;
+    }
+  ) => {
     set(callStateAtom, {
       ...get(callStateAtom),
       isActive: true,
@@ -108,14 +105,9 @@ export const startCallAtom = atom(
       roomName: params.roomName,
       participantCount: 1,
     });
-    
-    console.log("Call state updated successfully");
   }
 );
 
-export const endCallAtom = atom(
-  null,
-  (get, set) => {
-    set(callStateAtom, initialCallState);
-  }
-); 
+export const endCallAtom = atom(null, (get, set) => {
+  set(callStateAtom, initialCallState);
+});

@@ -22,10 +22,6 @@ export async function POST(
     const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005/api/v1';
     const url = `${API_BASE_URL}/donor-queries/${id}/accept`;
     
-    console.log(`[DEBUG] Would make request to: ${url}`);
-    console.log(`[DEBUG] Method: PATCH`);
-    console.log(`[DEBUG] Auth token present: ${!!token}`);
-    
     // Get details about the current query
     const detailsUrl = `${API_BASE_URL}/donor-queries/${id}`;
     let queryDetails = null;

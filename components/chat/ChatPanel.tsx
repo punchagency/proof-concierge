@@ -92,10 +92,12 @@ const constructDailyUrl = (roomName: string) => {
 
   // Clean up the room name to handle potential edge cases
   const cleanedRoomName = roomName.trim();
-  
+
   // If it already includes protocol, ensure URL is valid
-  if (cleanedRoomName.startsWith("http://") || cleanedRoomName.startsWith("https://")) {
-    console.log("URL already has protocol:", cleanedRoomName);
+  if (
+    cleanedRoomName.startsWith("http://") ||
+    cleanedRoomName.startsWith("https://")
+  ) {
     try {
       // Validate URL format
       new URL(cleanedRoomName);
@@ -111,13 +113,15 @@ const constructDailyUrl = (roomName: string) => {
     // If it's missing the protocol, add https://
     if (!cleanedRoomName.startsWith("http")) {
       const fixedUrl = `https://${cleanedRoomName}`;
-      console.log("Adding https to daily.co domain:", fixedUrl);
       try {
         // Validate the fixed URL
         new URL(fixedUrl);
         return fixedUrl;
       } catch (error) {
-        console.error("Invalid daily.co URL format after adding protocol:", error);
+        console.error(
+          "Invalid daily.co URL format after adding protocol:",
+          error
+        );
       }
     }
   }
@@ -128,10 +132,9 @@ const constructDailyUrl = (roomName: string) => {
     const parts = cleanedRoomName.split("/");
     const domain = parts[0];
     const room = parts[parts.length - 1];
-    
+
     // If domain is prooftest or something similar, construct properly
     const fixedUrl = `https://${domain}.daily.co/${room}`;
-    console.log(`Constructing URL from domain "${domain}" and room "${room}": ${fixedUrl}`);
     try {
       // Validate the fixed URL
       new URL(fixedUrl);
@@ -143,7 +146,6 @@ const constructDailyUrl = (roomName: string) => {
 
   // Default case: assume it's just a room name for the prooftest domain
   const defaultUrl = `https://prooftest.daily.co/${cleanedRoomName}`;
-  console.log("Constructing URL with default domain for room:", defaultUrl);
   try {
     // Validate the default URL
     new URL(defaultUrl);
@@ -249,7 +251,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
       } catch (error) {
         console.error("Error fetching messages:", error);
         if (showLoading) {
-          blueToast("Failed to load messages", {}, 'error');
+          blueToast("Failed to load messages", {}, "error");
         }
       } finally {
         if (showLoading) {
@@ -295,7 +297,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
       await fetchMessages(false);
     } catch (error) {
       console.error("Error sending message:", error);
-      blueToast("Failed to send message", {}, 'error');
+      blueToast("Failed to send message", {}, "error");
     } finally {
       setIsSending(false);
     }
@@ -303,12 +305,16 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
 
   const startVideoCall = async () => {
     if (callState.isActive) {
-      blueToast("You are already in a call. Please end the current call first.", {}, 'error');
+      blueToast(
+        "You are already in a call. Please end the current call first.",
+        {},
+        "error"
+      );
       return;
     }
 
     if (!donorQueryId || !user || !token) {
-      blueToast("Query ID or user information is missing", {}, 'error');
+      blueToast("Query ID or user information is missing", {}, "error");
       return;
     }
 
@@ -316,36 +322,41 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
 
     try {
       // Initiate a video call with the donor
-      const response = await startQueryCall(donorQueryId, user.id.toString(), CallMode.VIDEO);
-      
+      const response = await startQueryCall(
+        donorQueryId,
+        user.id.toString(),
+        CallMode.VIDEO
+      );
+
       if (!response) {
         throw new Error("No response received from server");
       }
-      
+
       // API returns different response formats - handle all possibilities
       const callSession = response.data?.callSession;
       const roomName = callSession?.roomName;
       const roomUrl = response.data?.roomUrl;
       const roomToken = response.data?.adminToken || callSession?.adminToken;
-      
+
       if (!roomName && !roomUrl) {
         throw new Error("Missing room information in response");
       }
-      
+
       // Construct the roomUrl if we only have roomName
-      const finalRoomUrl = roomUrl || (roomName ? constructDailyUrl(roomName) : "");
-      
+      const finalRoomUrl =
+        roomUrl || (roomName ? constructDailyUrl(roomName) : "");
+
       if (!finalRoomUrl) {
         throw new Error("Could not determine room URL");
       }
-      
+
       if (!roomToken) {
         throw new Error("Missing room token in response");
       }
 
       // Get room name from URL if not provided directly
-      const finalRoomName = roomName || finalRoomUrl.split('/').pop() || "";
-      
+      const finalRoomName = roomName || finalRoomUrl.split("/").pop() || "";
+
       // Initialize the call using Jotai - this will trigger isInCall in DockableQueryModal
       startCall({
         queryId: donorQueryId,
@@ -353,14 +364,19 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         mode: CallMode.VIDEO,
         roomUrl: finalRoomUrl,
         roomToken,
-        roomName: finalRoomName
+        roomName: finalRoomName,
       });
 
       // Refresh messages to show call started
       await fetchMessages(false);
     } catch (error) {
       console.error("Error starting video call:", error);
-      blueToast("Failed to start video call: " + (error instanceof Error ? error.message : "Unknown error"), {}, 'error');
+      blueToast(
+        "Failed to start video call: " +
+          (error instanceof Error ? error.message : "Unknown error"),
+        {},
+        "error"
+      );
     } finally {
       setIsStartingVideoCall(false);
     }
@@ -368,12 +384,16 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
 
   const startAudioCall = async () => {
     if (callState.isActive) {
-      blueToast("You are already in a call. Please end the current call first.", {}, 'error');
+      blueToast(
+        "You are already in a call. Please end the current call first.",
+        {},
+        "error"
+      );
       return;
     }
 
     if (!donorQueryId || !user || !token) {
-      blueToast("Query ID or user information is missing", {}, 'error');
+      blueToast("Query ID or user information is missing", {}, "error");
       return;
     }
 
@@ -381,36 +401,41 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
 
     try {
       // Initiate an audio call with the donor
-      const response = await startQueryCall(donorQueryId, user.id.toString(), CallMode.AUDIO);
-      
+      const response = await startQueryCall(
+        donorQueryId,
+        user.id.toString(),
+        CallMode.AUDIO
+      );
+
       if (!response) {
         throw new Error("No response received from server");
       }
-      
+
       // API returns different response formats - handle all possibilities
       const callSession = response.data?.callSession;
       const roomName = callSession?.roomName;
       const roomUrl = response.data?.roomUrl;
       const roomToken = response.data?.adminToken || callSession?.adminToken;
-      
+
       if (!roomName && !roomUrl) {
         throw new Error("Missing room information in response");
       }
-      
+
       // Construct the roomUrl if we only have roomName
-      const finalRoomUrl = roomUrl || (roomName ? constructDailyUrl(roomName) : "");
-      
+      const finalRoomUrl =
+        roomUrl || (roomName ? constructDailyUrl(roomName) : "");
+
       if (!finalRoomUrl) {
         throw new Error("Could not determine room URL");
       }
-      
+
       if (!roomToken) {
         throw new Error("Missing room token in response");
       }
 
       // Get room name from URL if not provided directly
-      const finalRoomName = roomName || finalRoomUrl.split('/').pop() || "";
-      
+      const finalRoomName = roomName || finalRoomUrl.split("/").pop() || "";
+
       // Initialize the call using Jotai - this will trigger isInCall in DockableQueryModal
       startCall({
         queryId: donorQueryId,
@@ -418,14 +443,19 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         mode: CallMode.AUDIO,
         roomUrl: finalRoomUrl,
         roomToken,
-        roomName: finalRoomName
+        roomName: finalRoomName,
       });
 
       // Refresh messages to show call started
       await fetchMessages(false);
     } catch (error) {
       console.error("Error starting audio call:", error);
-      blueToast("Failed to start audio call: " + (error instanceof Error ? error.message : "Unknown error"), {}, 'error');
+      blueToast(
+        "Failed to start audio call: " +
+          (error instanceof Error ? error.message : "Unknown error"),
+        {},
+        "error"
+      );
     } finally {
       setIsStartingAudioCall(false);
     }
@@ -476,21 +506,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
       if (requestIdMatch && requestIdMatch[1]) {
         extractedCallRequestId = parseInt(requestIdMatch[1], 10);
       }
-    }
-
-    // Debug call requests
-    if (isCallRequest) {
-      console.log("Found call request message:", {
-        id: message.id,
-        content: message.content,
-        isFromAdmin: message.isFromAdmin,
-        callMode: message.callMode,
-        callRequestId: message.callRequestId,
-        extractedCallRequestId,
-        isDonorRequest: message.content
-          ?.toLowerCase()
-          .includes("donor requested"),
-      });
     }
 
     // Additional check for donor identification, examining multiple properties
@@ -705,9 +720,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                 className="rounded-full text-xs px-4 py-1 h-auto bg-primary text-white hover:bg-primary/90"
                 onClick={() => {
                   const requestId = extractedCallRequestId || 0;
-                  console.log(
-                    `Accepting call with requestId: ${requestId}, mode: ${callMode}`
-                  );
                   handleCallAcceptResponse(
                     requestId,
                     callMode as "VIDEO" | "AUDIO"
@@ -737,14 +749,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                   variant="outline"
                   className="rounded-full text-xs px-4 py-1 h-auto bg-primary/5 border-primary/10 text-primary hover:bg-primary/10"
                   onClick={() => {
-                    console.log("Join Call button clicked for call request:", {
-                      messageId: message.id,
-                      type: message.messageType,
-                      hasCallSession: !!message.callSession,
-                      roomName: message.roomName,
-                      callSessionId: message.callSessionId,
-                      callMode: message.callMode,
-                    });
                     handleJoinCall(message);
                   }}
                   disabled={isJoiningCall}
@@ -766,13 +770,13 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                     if (message.callSession?.roomName) {
                       endCall(message.callSession.roomName)
                         .then(() => {
-                          blueToast("Call ended", {}, 'success');
+                          blueToast("Call ended", {}, "success");
                           // Refresh messages after ending the call
                           fetchMessages(false);
                         })
                         .catch((error) => {
                           console.error("Error ending call:", error);
-                          blueToast("Failed to end call", {}, 'error');
+                          blueToast("Failed to end call", {}, "error");
                         });
                     }
                   }}
@@ -849,17 +853,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                 variant="outline"
                 className="rounded-full text-xs px-4 py-1 h-auto bg-primary/5 border-primary/10 text-primary hover:bg-primary/10"
                 onClick={() => {
-                  console.log(
-                    "Join Call button clicked for CALL_STARTED message:",
-                    {
-                      messageId: message.id,
-                      type: message.messageType,
-                      hasCallSession: !!message.callSession,
-                      roomName: message.roomName,
-                      callSessionId: message.callSessionId,
-                      callMode: message.callMode,
-                    }
-                  );
                   handleJoinCall(message);
                 }}
                 disabled={isJoiningCall}
@@ -881,13 +874,13 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                   if (message.roomName) {
                     endCall(message.roomName)
                       .then(() => {
-                        blueToast("Call ended", {}, 'success');
+                        blueToast("Call ended", {}, "success");
                         // Refresh messages after ending the call
                         fetchMessages(false);
                       })
                       .catch((error) => {
                         console.error("Error ending call:", error);
-                        blueToast("Failed to end call", {}, 'error');
+                        blueToast("Failed to end call", {}, "error");
                       });
                   }
                 }}
@@ -955,9 +948,15 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
         // Check if roomUrl is missing but we have roomName
         if (!message.callSession.roomUrl && message.callSession.roomName) {
           // Construct roomUrl from roomName
-          const constructedUrl = constructDailyUrl(message.callSession.roomName);
+          const constructedUrl = constructDailyUrl(
+            message.callSession.roomName
+          );
           if (!constructedUrl) {
-            blueToast("Invalid room name. Unable to construct a valid URL.", {}, 'error');
+            blueToast(
+              "Invalid room name. Unable to construct a valid URL.",
+              {},
+              "error"
+            );
             setIsJoiningCall(false);
             return;
           }
@@ -974,15 +973,20 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
           let roomName = "";
           try {
             const urlObj = new URL(roomUrl);
-            const pathParts = urlObj.pathname.split('/').filter(Boolean);
-            roomName = pathParts.length > 0 ? pathParts[pathParts.length - 1] : "";
+            const pathParts = urlObj.pathname.split("/").filter(Boolean);
+            roomName =
+              pathParts.length > 0 ? pathParts[pathParts.length - 1] : "";
           } catch (urlError) {
             // Fallback to using the existing room name if available
             roomName = message.callSession.roomName || "";
           }
 
           if (!roomName) {
-            blueToast("Invalid room information. Please try again.", {}, 'error');
+            blueToast(
+              "Invalid room information. Please try again.",
+              {},
+              "error"
+            );
             setIsJoiningCall(false);
             return;
           }
@@ -999,17 +1003,23 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             });
           } catch (callError) {
             console.error("Error starting call:", callError);
-            blueToast("Failed to start the call. Please try again.", {}, 'error');
+            blueToast(
+              "Failed to start the call. Please try again.",
+              {},
+              "error"
+            );
           }
         } else {
-          blueToast("Call information is incomplete", {}, 'error');
+          blueToast("Call information is incomplete", {}, "error");
         }
       } else if (message.callSessionId) {
         // If we have a callSessionId but no callSession object,
         // try to fetch the call session details from the API
         try {
           toast.loading("Retrieving call information...");
-          const callSessionData = await getCallSessionById(message.callSessionId);
+          const callSessionData = await getCallSessionById(
+            message.callSessionId
+          );
 
           if (callSessionData && callSessionData.data) {
             const callSession = callSessionData.data;
@@ -1025,32 +1035,43 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                 startCall({
                   queryId: donorQueryId,
                   userId: user?.id || 0,
-                  mode: message.callMode?.toLowerCase() === "video" ? CallMode.VIDEO : CallMode.AUDIO,
+                  mode:
+                    message.callMode?.toLowerCase() === "video"
+                      ? CallMode.VIDEO
+                      : CallMode.AUDIO,
                   roomUrl,
                   roomToken,
                   roomName,
                 });
-                
+
                 toast.dismiss();
               } else {
-                blueToast("Call information is incomplete. Missing admin token.", {}, 'error');
+                blueToast(
+                  "Call information is incomplete. Missing admin token.",
+                  {},
+                  "error"
+                );
               }
             } else {
-              blueToast("Failed to retrieve complete call information", {}, 'error');
+              blueToast(
+                "Failed to retrieve complete call information",
+                {},
+                "error"
+              );
             }
           } else {
-            blueToast("Failed to retrieve call session data", {}, 'error');
+            blueToast("Failed to retrieve call session data", {}, "error");
           }
         } catch (error) {
           console.error("Error retrieving call session:", error);
-          blueToast("Failed to retrieve call information", {}, 'error');
+          blueToast("Failed to retrieve call information", {}, "error");
         }
       } else {
-        blueToast("No call information available", {}, 'error');
+        blueToast("No call information available", {}, "error");
       }
     } catch (error) {
       console.error("Error joining call:", error);
-      blueToast("An unexpected error occurred", {}, 'error');
+      blueToast("An unexpected error occurred", {}, "error");
     } finally {
       setIsJoiningCall(false);
     }
@@ -1062,7 +1083,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
     callMode: "VIDEO" | "AUDIO"
   ) => {
     if (!token) {
-      blueToast("You must be logged in to accept calls", {}, 'error');
+      blueToast("You must be logged in to accept calls", {}, "error");
       return;
     }
 
@@ -1074,7 +1095,7 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
 
       if (response && response.success) {
         toast.dismiss();
-        blueToast("Call accepted successfully", {}, 'success');
+        blueToast("Call accepted successfully", {}, "success");
 
         // Refresh messages to get updated call information
         await fetchMessages(false);
@@ -1097,16 +1118,16 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             roomName,
           });
         } else {
-          blueToast("Call information is incomplete", {}, 'error');
+          blueToast("Call information is incomplete", {}, "error");
         }
       } else {
         toast.dismiss();
-        blueToast(response?.message || "Failed to accept call", {}, 'error');
+        blueToast(response?.message || "Failed to accept call", {}, "error");
       }
     } catch (error) {
       console.error("Error accepting call:", error);
       toast.dismiss();
-      blueToast("Failed to accept call request", {}, 'error');
+      blueToast("Failed to accept call request", {}, "error");
     } finally {
       setIsAcceptingCall(null);
     }
