@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useAuth } from '@/lib/auth/auth-context';
+import { blueToast } from '@/lib/utils';
 
 // Keep the original interface with number id
 interface DockableQueryModalProps {
@@ -62,13 +63,27 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
 
   const handleAcceptQuery = async () => {
     if (!data.id) {
-      toast.error("Query ID is missing");
+      blueToast("Query ID is missing", {}, 'error');
+      return;
+    }
+    
+    // Check if query is already resolved or transferred before proceeding
+    if (data.status === "Resolved" || data.status === "Transferred") {
+      blueToast(`Cannot accept a ${data.status.toLowerCase()} query`, {
+        description: "This query has already been processed and cannot be accepted again."
+      }, 'error');
       return;
     }
     
     setIsAccepting(true);
     try {
+      // Display a loading toast
+      const loadingToast = toast.loading("Accepting query...");
+      
       const success = await acceptQuery(data.id);
+      
+      // Clear the loading toast
+      toast.dismiss(loadingToast);
       
       // Even if the backend returns an error, we'll still proceed to the chat view
       // This is a temporary workaround until the backend is fixed
@@ -80,14 +95,38 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
       localStorage.setItem('acceptedQueries', JSON.stringify(acceptedQueries));
       
       if (success) {
-        toast.success(`Query from ${data.donor} accepted`);
+        blueToast(`Query from ${data.donor} accepted`, {
+          description: "You can now communicate with the donor"
+        }, 'success');
       } else {
+        // Check if we have a detailed error message in sessionStorage
+        let errorMsg = "There was an issue accepting the query";
+        try {
+          const lastError = sessionStorage.getItem('lastQueryError');
+          if (lastError) {
+            errorMsg = lastError;
+            // Clear it after use
+            sessionStorage.removeItem('lastQueryError');
+          }
+        } catch (e) {
+          console.error("Error accessing sessionStorage:", e);
+        }
+        
         // Show a warning instead of an error to indicate we're proceeding anyway
-        toast.warning(`There was an issue accepting the query, but you can still proceed with the chat`);
+        blueToast(`Warning: ${errorMsg}`, {
+          description: "You can still proceed with the chat, but some features might be limited."
+        }, 'warning');
       }
     } catch (error) {
       console.error("Error accepting query:", error);
-      toast.warning("There was an issue with the server, but you can still proceed with the chat");
+      blueToast("Server error", {
+        description: "There was an issue with the server, but you can still proceed with the chat",
+        action: {
+          label: 'Proceed',
+          onClick: () => {} // Action is just for visual, we already proceed
+        }
+      }, 'warning');
+      
       // Still proceed to chat view despite the error
       setIsAccepted(true);
       
@@ -158,11 +197,8 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
         // Close the dialog
         setResolveDialogOpen(false);
         
-        // Add a small delay before redirecting to ensure the toast is visible
-        setTimeout(() => {
-          // Redirect to the resolved queries page
-          router.push('/resolved-queries');
-        }, 1500);
+        // Keep the modal open and don't navigate away
+        // The user can manually close it when they're done
       } else {
         toast.error("Failed to resolve query");
       }

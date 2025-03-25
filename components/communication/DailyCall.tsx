@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, ReactNode } from 'react';
+import { useEffect, ReactNode, useState } from 'react';
 import { DailyAudio, DailyProvider } from '@daily-co/daily-react';
 import { useAtom } from 'jotai';
 import { 
@@ -11,6 +11,7 @@ import {
 } from '@/lib/atoms/callState';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useDaily, useDailyEvent } from '@daily-co/daily-react';
+import { ErrorBoundary } from 'react-error-boundary';
 
 // Helper component to initialize Daily after provider is created
 function DailyInitializer() {
@@ -72,8 +73,9 @@ export function DailyCall({ roomUrl, roomToken, mode, children }: DailyCallProps
   const [, setIsMuted] = useAtom(isMutedAtom);
   const [, setIsVideoOff] = useAtom(isVideoOffAtom);
   const [, setIsScreenSharing] = useAtom(isScreenSharingAtom);
+  const [initError, setInitError] = useState<string | null>(null);
   
-  // Add debugging
+  // Add debugging and error handling
   useEffect(() => {
     console.log("DailyCall initializing with:", { 
       roomUrl, 
@@ -82,13 +84,30 @@ export function DailyCall({ roomUrl, roomToken, mode, children }: DailyCallProps
       callStateActive: callState.isActive
     });
     
+    // Validate required properties
     if (!roomUrl) {
       console.error("DailyCall: missing roomUrl");
+      setInitError("Missing room URL");
+      return;
     }
     
     if (!roomToken) {
       console.error("DailyCall: missing roomToken");
+      setInitError("Missing room token");
+      return;
     }
+    
+    // Validate URL format
+    try {
+      new URL(roomUrl);
+    } catch (err) {
+      console.error("DailyCall: invalid roomUrl format", roomUrl);
+      setInitError("Invalid room URL format");
+      return;
+    }
+    
+    // Clear any previous errors
+    setInitError(null);
     
     // Update call mode specific settings
     setIsMuted(false);
@@ -110,12 +129,19 @@ export function DailyCall({ roomUrl, roomToken, mode, children }: DailyCallProps
     // This was causing the component to enter a mounting/unmounting loop
   }, [roomUrl, roomToken, mode, callState.isActive, setCallState, setIsMuted, setIsVideoOff, setIsScreenSharing]);
 
+  // Show error state if validation failed
+  if (initError) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-red-500">
+          Error: {initError}
+        </div>
+      </div>
+    );
+  }
+
   // Verify we have the required properties
   if (!roomUrl || !roomToken) {
-    console.error("DailyCall: Invalid props for Daily.co initialization", { 
-      hasRoomUrl: !!roomUrl, 
-      hasRoomToken: !!roomToken 
-    });
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-red-500">
@@ -125,14 +151,35 @@ export function DailyCall({ roomUrl, roomToken, mode, children }: DailyCallProps
     );
   }
 
-  return (
-    <DailyProvider
-      url={roomUrl}
-      token={roomToken}
-    >
-      <DailyInitializer />
-      <DailyAudio />
-      {children}
-    </DailyProvider>
-  );
+  // We use a try-catch wrapper in our return to handle potential errors
+  try {
+    return (
+      <DailyProvider
+        url={roomUrl}
+        token={roomToken}
+      >
+        <ErrorBoundary fallback={
+          <div className="flex items-center justify-center h-full">
+            <div className="text-red-500 text-center">
+              <p>An error occurred initializing the call.</p>
+              <p className="mt-2 text-sm">Please try again or contact support.</p>
+            </div>
+          </div>
+        }>
+          <DailyInitializer />
+          <DailyAudio />
+          {children}
+        </ErrorBoundary>
+      </DailyProvider>
+    );
+  } catch (error) {
+    console.error("Error rendering DailyProvider:", error);
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-red-500">
+          Error: Failed to initialize call
+        </div>
+      </div>
+    );
+  }
 } 

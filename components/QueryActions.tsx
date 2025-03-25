@@ -86,7 +86,8 @@ export function QueryActions({
         // Trigger the global refresh to update all tabs
         triggerRefresh();
         
-        // Then call the local callback
+        // Call the onActionComplete callback to update the UI state locally
+        // but don't force navigation away or closing of the modal
         onActionComplete();
       } else {
         toast.error("Failed to resolve query");

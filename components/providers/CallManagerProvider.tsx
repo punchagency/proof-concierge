@@ -111,6 +111,45 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
     });
   }, [endCall, currentQueryId]);
 
+  // Function to validate and normalize room URL
+  const validateRoomUrl = (roomUrl: string, roomName: string): string => {
+    if (!roomUrl) {
+      console.error("Missing roomUrl in call response");
+      return "";
+    }
+    
+    // If URL is already valid, return it
+    try {
+      new URL(roomUrl);
+      return roomUrl;
+    } catch (e) {
+      // URL is not valid, try to fix it
+      console.warn("Room URL is not valid, attempting to correct:", roomUrl);
+      
+      // If it has protocol but still invalid, it's malformed
+      if (roomUrl.startsWith('http')) {
+        console.error("URL has protocol but is still invalid");
+        return "";
+      }
+      
+      // Try to construct a valid URL with https:// prefix
+      try {
+        const fixedUrl = `https://${roomUrl}`;
+        new URL(fixedUrl); // This will throw if still invalid
+        return fixedUrl;
+      } catch (err) {
+        console.error("Failed to correct invalid URL:", err);
+        
+        // Last resort: try to build from roomName
+        if (roomName) {
+          return `https://prooftest.daily.co/${roomName}`;
+        }
+        
+        return "";
+      }
+    }
+  };
+
   // Function to start a video call
   const startVideoCall = useCallback(async (queryId: number, userId: number, profileData: ProfileData) => {
     if (callState.isActive) {
@@ -123,41 +162,76 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
       await updateQueryMode(queryId, "Video Call");
 
       // Create a call room
-      const callResponse = await startQueryCall(queryId, userId.toString(), CallMode.VIDEO);
-      
-      // Start the call
-      startCall({
-        queryId,
-        userId,
-        mode: CallMode.VIDEO,
-        roomUrl: callResponse.data.admin.roomUrl,
-        roomToken: callResponse.data.admin.roomToken,
-        roomName: callResponse.data.admin.roomName
-      });
-      
-      // Store the current user and queryId for reference
-      setCurrentCallUser(profileData);
-      setCurrentQueryId(queryId);
-      
-      // Open the query details modal with updated query mode
-      openModal(
-        `query-${queryId}`,
-        <QueryDetails 
-          data={{
-            id: queryId,
-            donor: profileData.name,
-            donorId: userId.toString(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            test: "Test",
-            device: "Device",
-            stage: "Stage",
-            dateNdTime: new Date().toISOString(),
-            status: "In Progress"
-          }} 
-        />,
-        profileData
-      );
+      try {
+        const callResponse = await startQueryCall(queryId, userId.toString(), CallMode.VIDEO);
+        
+        console.log("Video call response:", callResponse);
+        
+        // Validate required data
+        if (!callResponse?.data?.admin?.roomName) {
+          throw new Error("Missing room name in call response");
+        }
+        
+        // Validate and normalize the room URL
+        const roomName = callResponse.data.admin.roomName;
+        const roomUrl = validateRoomUrl(
+          callResponse.data.admin.roomUrl,
+          roomName
+        );
+        
+        if (!roomUrl) {
+          throw new Error("Invalid room URL");
+        }
+        
+        if (!callResponse.data.admin.roomToken) {
+          throw new Error("Missing room token in call response");
+        }
+        
+        // Start the call
+        startCall({
+          queryId,
+          userId,
+          mode: CallMode.VIDEO,
+          roomUrl: roomUrl,
+          roomToken: callResponse.data.admin.roomToken,
+          roomName: roomName
+        });
+        
+        // Store the current user and queryId for reference
+        setCurrentCallUser(profileData);
+        setCurrentQueryId(queryId);
+        
+        // Open the query details modal with updated query mode
+        openModal(
+          `query-${queryId}`,
+          <QueryDetails 
+            data={{
+              id: queryId,
+              donor: profileData.name,
+              donorId: userId.toString(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              test: "Test",
+              device: "Device",
+              stage: "Stage",
+              dateNdTime: new Date().toISOString(),
+              status: "In Progress"
+            }} 
+          />,
+          profileData
+        );
+      } catch (error: any) {
+        // Reset the query mode if call creation failed
+        await updateQueryMode(queryId, "Text");
+        
+        // Handle specific error for active calls
+        if (error?.response?.data?.statusCode === 500 && 
+            error?.response?.data?.message?.includes("already an active call")) {
+          toast.error("There is already an active call for this query. Please end the existing call before starting a new one.");
+          return;
+        }
+        throw error;
+      }
     } catch (error) {
       console.error("Error starting video call:", error);
       toast.error("Failed to start video call. Please try again.");
@@ -176,41 +250,76 @@ export function CallManagerProvider({ children }: { children: React.ReactNode })
       await updateQueryMode(queryId, "Huddle");
 
       // Create a call room
-      const callResponse = await startQueryCall(queryId, userId.toString(), CallMode.AUDIO);
-      
-      // Start the call
-      startCall({
-        queryId,
-        userId,
-        mode: CallMode.AUDIO,
-        roomUrl: callResponse.data.admin.roomUrl,
-        roomToken: callResponse.data.admin.roomToken,
-        roomName: callResponse.data.admin.roomName
-      });
-      
-      // Store the current user and queryId for reference
-      setCurrentCallUser(profileData);
-      setCurrentQueryId(queryId);
-      
-      // Open the query details modal with updated query mode
-      openModal(
-        `query-${queryId}`,
-        <QueryDetails 
-          data={{
-            id: queryId,
-            donor: profileData.name,
-            donorId: userId.toString(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            test: "Test",
-            device: "Device",
-            stage: "Stage",
-            dateNdTime: new Date().toISOString(),
-            status: "In Progress"
-          }} 
-        />,
-        profileData
-      );
+      try {
+        const callResponse = await startQueryCall(queryId, userId.toString(), CallMode.AUDIO);
+        
+        console.log("Audio call response:", callResponse);
+        
+        // Validate required data
+        if (!callResponse?.data?.admin?.roomName) {
+          throw new Error("Missing room name in call response");
+        }
+        
+        // Validate and normalize the room URL
+        const roomName = callResponse.data.admin.roomName;
+        const roomUrl = validateRoomUrl(
+          callResponse.data.admin.roomUrl,
+          roomName
+        );
+        
+        if (!roomUrl) {
+          throw new Error("Invalid room URL");
+        }
+        
+        if (!callResponse.data.admin.roomToken) {
+          throw new Error("Missing room token in call response");
+        }
+        
+        // Start the call
+        startCall({
+          queryId,
+          userId,
+          mode: CallMode.AUDIO,
+          roomUrl: roomUrl,
+          roomToken: callResponse.data.admin.roomToken,
+          roomName: roomName
+        });
+        
+        // Store the current user and queryId for reference
+        setCurrentCallUser(profileData);
+        setCurrentQueryId(queryId);
+        
+        // Open the query details modal with updated query mode
+        openModal(
+          `query-${queryId}`,
+          <QueryDetails 
+            data={{
+              id: queryId,
+              donor: profileData.name,
+              donorId: userId.toString(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              test: "Test",
+              device: "Device",
+              stage: "Stage",
+              dateNdTime: new Date().toISOString(),
+              status: "In Progress"
+            }} 
+          />,
+          profileData
+        );
+      } catch (error: any) {
+        // Reset the query mode if call creation failed
+        await updateQueryMode(queryId, "Text");
+        
+        // Handle specific error for active calls
+        if (error?.response?.data?.statusCode === 500 && 
+            error?.response?.data?.message?.includes("already an active call")) {
+          toast.error("There is already an active call for this query. Please end the existing call before starting a new one.");
+          return;
+        }
+        throw error;
+      }
     } catch (error) {
       console.error("Error starting audio call:", error);
       toast.error("Failed to start audio call. Please try again.");

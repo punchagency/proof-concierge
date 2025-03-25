@@ -41,7 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, blueToast } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -382,10 +382,11 @@ function AudioDeviceSelector() {
       // Update Daily.co's device settings
       await daily.setInputDevicesAsync(deviceConfig);
       
-      toast.success(`Audio ${type} device updated`);
+      // Don't show toast notification when updating devices
+      console.log(`Audio ${type} device updated to ${deviceId}`);
     } catch (error) {
       console.error(`Error changing audio ${type} device:`, error);
-      toast.error(`Failed to change audio ${type} device`);
+      blueToast(`Failed to change audio ${type} device`, {}, 'error');
     }
   }, [daily, isTesting, stopMicrophoneTest]);
 
@@ -394,24 +395,33 @@ function AudioDeviceSelector() {
     try {
       setIsLoading(true);
       
-      // Request permission if needed
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!daily) {
+        setIsLoading(false);
+        return;
+      }
       
-      // Get all devices
+      // Get all media devices
       const devices = await navigator.mediaDevices.enumerateDevices();
       
-      // Filter devices by type
-      const inputs = devices.filter(device => device.kind === 'audioinput');
-      const outputs = devices.filter(device => device.kind === 'audiooutput');
+      // Filter for audio devices
+      const inputs = devices.filter(d => d.kind === 'audioinput');
+      const outputs = devices.filter(d => d.kind === 'audiooutput');
       
+      // Update state with the found devices
       setAudioInputDevices(inputs);
       setAudioOutputDevices(outputs);
       
-      // Get current devices from Daily.co
+      console.log("Available audio devices:", {
+        inputs: inputs.map(d => ({ label: d.label, id: d.deviceId })),
+        outputs: outputs.map(d => ({ label: d.label, id: d.deviceId }))
+      });
+      
+      // Try to get current device settings from Daily.co
       if (daily) {
         try {
-          // Get current device configuration
-          const inputDevices = await daily.getInputDevices() as DailyInputDevices;
+          const inputDevices = await daily.getInputDevices();
+          console.log("Current Daily.co device settings:", inputDevices);
+          
           if (inputDevices && typeof inputDevices === 'object') {
             // Get input device
             const audioInputId = inputDevices.audioDeviceId || '';
@@ -455,7 +465,7 @@ function AudioDeviceSelector() {
       setIsLoading(false);
     } catch (error) {
       console.error("Error loading audio devices:", error);
-      toast.error("Failed to load audio devices");
+      // Don't show toast for audio device loading errors
       setIsLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -522,7 +532,7 @@ function AudioDeviceSelector() {
       
     } catch (error) {
       console.error("Error testing microphone:", error);
-      toast.error("Failed to test microphone");
+      // Don't show toast for microphone test failures
       setIsTesting(false);
     }
   };
@@ -803,14 +813,14 @@ export function CallUI({ onLeave }: CallUIProps) {
 
   // Initialize the call when the component mounts
   useEffect(() => {
-    const initializeCall = async () => {
-      if (!daily) return;
+    if (!daily) return;
 
+    const initializeCall = async () => {
       try {
         // Check current video state before setting it
         const localParticipant = daily.participants().local;
         const currentVideoState = localParticipant?.tracks?.video?.state === "off";
-
+        
         // Only set video state if it doesn't match the desired state
         if (isVideoOff !== currentVideoState) {
           await daily.setLocalVideo(!isVideoOff);
@@ -870,7 +880,7 @@ export function CallUI({ onLeave }: CallUIProps) {
         setTimeout(startAudioStats, 5000);
       } catch (error) {
         console.error("Error initializing call:", error);
-        toast.error("Failed to initialize call settings");
+        // Remove toast notification for initialization errors
       }
     };
 
@@ -897,19 +907,12 @@ export function CallUI({ onLeave }: CallUIProps) {
         // Update speaking state for visual indicator
         setIsSpeaking(audioActivity > 20);
         
-        // Log significant audio activity changes and show a toast the first time audio is transmitted
+        // Log significant audio activity changes but don't show toast
         if (audioActivity > 30 && lastAudioActivity < 30) {
           console.log("Audio transmission active: your voice is being sent", { level: audioActivity });
           
-          // Show a one-time toast notification to confirm audio transmission
-          if (!hasShownTransmissionToast) {
-            toast.success("✅ Microphone audio is transmitting!", {
-              id: "mic-transmission-confirmed",
-              duration: 3000
-            });
-            hasShownTransmissionToast = true;
-          }
-          
+          // Track that audio is transmitting but don't show toast
+          hasShownTransmissionToast = true;
           noAudioCount = 0;
         }
         
@@ -917,17 +920,9 @@ export function CallUI({ onLeave }: CallUIProps) {
         if (audioActivity < 5 && lastAudioActivity < 5) {
           noAudioCount++;
           
-          // After ~10 seconds of no audio, suggest checking
+          // After ~10 seconds of no audio, log a warning but don't show toast
           if (noAudioCount === 20 && !isMuted) {
             console.warn("No audio activity detected for 10 seconds while unmuted. Consider checking your microphone.");
-            
-            // Only show this warning toast if we've previously detected audio
-            if (hasShownTransmissionToast) {
-              toast.warning("No audio detected for a while. Try speaking or check your microphone.", {
-                id: "mic-silence-warning",
-                duration: 5000
-              });
-            }
           }
         }
         
@@ -940,19 +935,10 @@ export function CallUI({ onLeave }: CallUIProps) {
     // Check every 500ms
     const intervalId = setInterval(checkAudioTransmission, 500);
     
-    // Also add a delayed check to warn if no audio has been detected after a reasonable time
-    const delayedAudioCheck = setTimeout(() => {
-      if (!hasShownTransmissionToast && !isMuted) {
-        toast.info("Try speaking to verify your microphone is working", {
-          id: "mic-check-reminder",
-          duration: 5000
-        });
-      }
-    }, 8000);
+    // Remove the delayed audio check toast completely
     
     return () => {
       clearInterval(intervalId);
-      clearTimeout(delayedAudioCheck);
     };
   }, [daily, isMuted]);
 
@@ -965,7 +951,8 @@ export function CallUI({ onLeave }: CallUIProps) {
       setIsMuted(!isMuted);
     } catch (error) {
       console.error("Error toggling audio:", error);
-      toast.error("Failed to toggle microphone");
+      // Keep essential error toast as this is a critical user-initiated action
+      blueToast("Failed to toggle microphone", {}, 'error');
     }
   };
 
@@ -978,7 +965,8 @@ export function CallUI({ onLeave }: CallUIProps) {
       setIsVideoOff(!isVideoOff);
     } catch (error) {
       console.error("Error toggling video:", error);
-      toast.error("Failed to toggle camera");
+      // Keep essential error toast as this is a critical user-initiated action
+      blueToast("Failed to toggle camera", {}, 'error');
     }
   };
 
@@ -988,7 +976,7 @@ export function CallUI({ onLeave }: CallUIProps) {
     
     // Don't allow screen sharing until fully joined
     if (!isFullyJoined) {
-      toast.error("Please wait until call is fully connected before sharing your screen");
+      blueToast("Please wait until call is fully connected before sharing your screen", {}, 'error');
       return;
     }
 
@@ -1007,7 +995,7 @@ export function CallUI({ onLeave }: CallUIProps) {
       
       // Special handling for user cancellation vs actual errors
       if (!errorMessage.includes("user denied screen share")) {
-        toast.error(errorMessage);
+        blueToast(errorMessage, {}, 'error');
       }
       
       // Reset the screen sharing state

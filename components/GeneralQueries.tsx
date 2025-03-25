@@ -36,6 +36,24 @@ export default function GeneralQueries() {
     fetchData();
   }, []);
 
+  // Store query statuses in localStorage for client-side validation
+  useEffect(() => {
+    if (data && data.length > 0) {
+      try {
+        // Create a map of query ID to status
+        const queryStatuses = data.reduce((acc, query) => {
+          acc[query.id] = query.status;
+          return acc;
+        }, {} as Record<number, string>);
+        
+        // Save to localStorage for use in validation
+        localStorage.setItem('queryStatuses', JSON.stringify(queryStatuses));
+      } catch (error) {
+        console.error('Failed to store query statuses:', error);
+      }
+    }
+  }, [data]);
+
   // Function to handle filtered data from FilterDropdown
   const handleFilteredData = useCallback((filteredData: GeneralQueriesProps[]) => {
     console.log("GeneralQueries received filtered data:", filteredData?.length);

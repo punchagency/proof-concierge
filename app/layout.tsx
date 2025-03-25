@@ -7,6 +7,8 @@ import { CallProvider } from "@/components/providers/CallProvider";
 import { DockableModalProvider } from "@/components/providers/dockable-modal-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/auth-context";
+import { NotificationProvider } from "@/lib/notifications/notification-context";
+import { QueryRefreshProvider } from "@/lib/contexts/query-refresh-context";
 import { Provider as JotaiProvider } from "jotai";
 
 const inter = Inter({
@@ -31,15 +33,19 @@ export default function RootLayout({
       >
         <JotaiProvider>
           <AuthProvider>
-            <CallProvider>
-              <DockableModalProvider>
-                <CallManagerProvider>
-                  <Header />
-                  {children}
-                  <Toaster position="top-right" />
-                </CallManagerProvider>
-              </DockableModalProvider>
-            </CallProvider>
+            <NotificationProvider>
+              <QueryRefreshProvider>
+                <CallProvider>
+                  <DockableModalProvider>
+                    <CallManagerProvider>
+                      <Header />
+                      {children}
+                      <Toaster position="top-right" />
+                    </CallManagerProvider>
+                  </DockableModalProvider>
+                </CallProvider>
+              </QueryRefreshProvider>
+            </NotificationProvider>
           </AuthProvider>
         </JotaiProvider>
       </body>

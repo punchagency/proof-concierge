@@ -2,7 +2,7 @@ import { formatDate } from '../utils/date';
 import { fetchWithAuth } from './fetch-utils';
 
 // Define the API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005/api/v1';
 
 // Define the donor query types
 export type QueryMode = 'Text' | 'Huddle' | 'Video Call';
@@ -297,7 +297,7 @@ export async function createQuery(data: Omit<DonorQuery, 'id' | 'createdAt' | 'u
 export async function fetchAdminUsers() {
   try {
     // Use the correct API base URL for users endpoint
-    const USERS_API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com';
+    const USERS_API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
     const response = await fetchWithAuth(`${USERS_API_BASE_URL}/users`);
     if (!response.ok) {
       throw new Error(`Failed to fetch admin users: ${response.status}`);
@@ -311,15 +311,15 @@ export async function fetchAdminUsers() {
 }
 
 // Add a function to transfer a query to a specific admin user
-export async function transferQueryToUser(queryId: number, userId: number, note?: string) {
+export async function transferQueryToUser(queryId: number, adminId: number, note?: string) {
   try {
-    const response = await fetchWithAuth(`${API_BASE_URL}/donor-queries/${queryId}/transfer-to-user`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/donor-queries/${queryId}/transfer`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ 
-        userId,
+        adminId,
         transferNote: note 
       }),
     });
@@ -367,30 +367,118 @@ export async function sendQueryReminder(queryId: number, message?: string) {
 export async function acceptQuery(id: number): Promise<boolean> {
   try {
     console.log(`Attempting to accept query with ID: ${id}`);
-    const response = await fetchWithAuth(`${API_BASE_URL}/donor-queries/${id}/accept`, {
+    
+    // Input validation
+    if (!id || isNaN(id) || id <= 0) {
+      console.error('Invalid query ID provided:', id);
+      sessionStorage.setItem('lastQueryError', 'Invalid query ID provided');
+      return false;
+    }
+
+    // Check for query status locally first
+    let queryStatus;
+    try {
+      const localState = localStorage.getItem('queryStatuses');
+      if (localState) {
+        const statuses = JSON.parse(localState);
+        queryStatus = statuses[id];
+        
+        // If we know it's resolved or transferred, fail immediately
+        if (queryStatus === 'Resolved' || queryStatus === 'Transferred') {
+          const errorMsg = `Cannot accept query ${id} with status ${queryStatus}`;
+          console.error(errorMsg);
+          sessionStorage.setItem('lastQueryError', errorMsg);
+          return false;
+        }
+      }
+    } catch (e) {
+      console.log("Couldn't check local query status, proceeding with API call");
+    }
+    
+    // Log the exact URL and request details for debugging
+    const url = `${API_BASE_URL}/donor-queries/${id}/accept`;
+    console.log(`Making accept query request to: ${url}`);
+    console.log(`Request method: PATCH`);
+    
+    // Check for token before making request
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      const errorMsg = 'Authentication token missing. Please log in again.';
+      console.error(errorMsg);
+      sessionStorage.setItem('lastQueryError', errorMsg);
+      return false;
+    }
+    
+    const response = await fetchWithAuth(url, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
+    // Log response status for debugging
+    console.log(`Accept query response status: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
       let errorMessage = `Status: ${response.status} ${response.statusText}`;
+      let errorData;
+      
       try {
-        const errorData = await response.json();
+        // Try to parse the error response as JSON
+        errorData = await response.json();
         console.error('Error accepting query:', errorData);
-        console.error('Response status:', response.status);
-        console.error('Response status text:', response.statusText);
         
         if (errorData && errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch {
-        errorMessage = await response.text();
+        
+        // Store the error message in sessionStorage
+        sessionStorage.setItem('lastQueryError', errorMessage);
+      } catch (parseError) {
+        // If response isn't JSON, get it as text
+        try {
+          const textError = await response.text();
+          console.error('Error response text:', textError);
+          errorMessage = textError || errorMessage;
+          sessionStorage.setItem('lastQueryError', errorMessage);
+        } catch (textError) {
+          console.error('Failed to get error text', textError);
+        }
       }
       
-      // Return false but don't throw, so the UI can still proceed
       console.error('Error details:', errorMessage);
+      
+      // Specific error handling based on status code
+      if (response.status === 400) {
+        console.error('Bad Request error when accepting query. This usually means the request format is incorrect or the query cannot be accepted in its current state.');
+        
+        // Try to provide a more user-friendly error message
+        let userErrorMsg = 'Unable to accept query due to a request error.';
+        
+        if (errorMessage.includes('cannot accept a resolved')) {
+          userErrorMsg = 'This query has already been resolved and cannot be accepted.';
+        } else if (errorMessage.includes('cannot accept a transferred')) {
+          userErrorMsg = 'This query has already been transferred and cannot be accepted.';
+        } else if (errorMessage.includes('already accepted')) {
+          userErrorMsg = 'This query has already been accepted.';
+        }
+        
+        sessionStorage.setItem('lastQueryError', userErrorMsg);
+        return false;
+      } else if (response.status === 401) {
+        sessionStorage.setItem('lastQueryError', 'Authentication failed. Please log in again.');
+        return false;
+      } else if (response.status === 403) {
+        sessionStorage.setItem('lastQueryError', 'You do not have permission to accept this query.');
+        return false;
+      } else if (response.status === 404) {
+        sessionStorage.setItem('lastQueryError', 'Query not found. It may have been deleted.');
+        return false;
+      } else if (response.status === 409) {
+        sessionStorage.setItem('lastQueryError', 'Conflict with the current state of the query. Another user may have already accepted it.');
+        return false;
+      }
+      
       return false;
     }
 
@@ -398,6 +486,8 @@ export async function acceptQuery(id: number): Promise<boolean> {
     return true;
   } catch (error) {
     console.error('Error accepting query:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+    sessionStorage.setItem('lastQueryError', errorMsg);
     return false;
   }
 } 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChatTab } from "./chat/ChatTab";
 import { toast } from "sonner";
 import { acceptQuery } from "@/lib/api/donor-queries";
+import { blueToast } from "@/lib/utils";
 
 export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
   const [activeTab, setActiveTab] = useState("details");
@@ -15,19 +16,53 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
       return;
     }
     
+    // Check if query is already resolved or transferred before proceeding
+    if (data.status === "Resolved" || data.status === "Transferred") {
+      blueToast(`Cannot accept a ${data.status.toLowerCase()} query`, {
+        description: "This query has already been processed and cannot be accepted again."
+      }, 'error');
+      return;
+    }
+    
     setIsAccepting(true);
     try {
+      // Display a loading toast
+      const loadingToast = toast.loading("Accepting query...");
+      
       const success = await acceptQuery(data.id);
+      
+      // Clear the loading toast
+      toast.dismiss(loadingToast);
+      
       if (success) {
         // Switch to the chat tab when accepting the query
         setActiveTab("chat");
-        toast.success(`Query from ${data.donor} accepted`);
+        blueToast(`Query from ${data.donor} accepted`, {
+          description: "You can now communicate with the donor"
+        }, 'success');
       } else {
-        toast.error("Failed to accept query");
+        // Check if we have a detailed error message in sessionStorage
+        let errorMsg = "Failed to accept query";
+        try {
+          const lastError = sessionStorage.getItem('lastQueryError');
+          if (lastError) {
+            errorMsg = lastError;
+            // Clear it after use
+            sessionStorage.removeItem('lastQueryError');
+          }
+        } catch (e) {
+          console.error("Error accessing sessionStorage:", e);
+        }
+        
+        blueToast("Query acceptance failed", {
+          description: errorMsg
+        }, 'error');
       }
     } catch (error) {
       console.error("Error accepting query:", error);
-      toast.error("An unexpected error occurred");
+      blueToast("An unexpected error occurred", {
+        description: error instanceof Error ? error.message : "Unknown error"
+      }, 'error');
     } finally {
       setIsAccepting(false);
     }

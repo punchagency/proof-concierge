@@ -2,7 +2,7 @@ import { CallMode } from '@/types/communication';
 import { fetchWithAuth } from './fetch-utils';
 
 // Define the API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://proof-concierge-fcbe8069aebb.herokuapp.com/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005/api/v1';
 
 /**
  * Service for handling communication with the backend for video and audio calls
@@ -55,6 +55,20 @@ export async function startQueryCall(queryId: number, donorId: string, mode: Cal
       }),
     });
 
+    // Check if the response is not ok
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error starting query call:', errorData);
+      
+      // Create enhanced error with response data
+      const error = new Error(`Failed to start call: ${response.status} ${response.statusText}`);
+      (error as any).response = { 
+        status: response.status,
+        data: errorData
+      };
+      throw error;
+    }
+
     const data = await response.json();
     
     // Log the join link in the terminal
@@ -70,20 +84,28 @@ export async function startQueryCall(queryId: number, donorId: string, mode: Cal
 
     return data;
   } catch (error) {
+    // If the error was already formatted with response data, rethrow it
+    if ((error as any).response) {
+      throw error;
+    }
+    
     console.error('Error starting query call:', error);
     throw error;
   }
 }
 
 /**
- * End a call by deleting the room
+ * End a call by sending a request to end the active call session
  */
 export async function endCall(roomName: string) {
   try {
     console.log(`Ending call in room: ${roomName}`);
     
-    const response = await fetchWithAuth(`${API_BASE_URL}/communication/call/${roomName}`, {
-      method: 'DELETE',
+    const response = await fetchWithAuth(`${API_BASE_URL}/communication/call/${roomName}/end`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
     });
     
     const data = await response.json();

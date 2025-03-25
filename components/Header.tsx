@@ -1,7 +1,6 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import Notification from "@/icons/Notification";
 import Profile from "@/icons/Profile";
 import ProofLogo from "@/icons/Proof";
 import Settings from "@/icons/Settings";
@@ -17,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import NotificationBell from "./notifications/NotificationBell";
 
 export default function Header() {
   const { isAuthenticated, logout, user, isSuperAdmin } = useAuth();
@@ -41,7 +41,7 @@ export default function Header() {
           {isAuthenticated ? (
             <>
               <Settings />
-              <Notification />
+              <NotificationBell />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="focus:outline-none">
