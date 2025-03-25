@@ -14,13 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from '@/lib/auth/auth-context';
 import { blueToast } from '@/lib/utils';
 
-// Keep the original interface with number id
-interface DockableQueryModalProps {
-  data: GeneralQueriesProps; // This has id as number
-  initiallyAccepted?: boolean;
-}
-
-// First, define a proper interface for admin users
+// Interface for admin users
 interface AdminUser {
   id: number;
   name: string;
@@ -28,11 +22,27 @@ interface AdminUser {
   role?: string;
 }
 
+// Interface for the component props
+interface DockableQueryModalProps {
+  data: GeneralQueriesProps & {
+    assignedToUser?: {
+      id: number;
+      name: string;
+      role: string;
+    };
+  };
+  initiallyAccepted?: boolean;
+}
+
 export function DockableQueryModal({ data, initiallyAccepted = false }: DockableQueryModalProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const [isAccepted, setIsAccepted] = useState(initiallyAccepted);
+  
+  // Core states
+  const [isAccepted, setIsAccepted] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
+  
+  // Transfer and resolve states
   const [isTransferring, setIsTransferring] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
@@ -40,22 +50,43 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
 
-  // Check localStorage on mount to see if this query was previously accepted
+  // Main useEffect - determine if the query is accepted
   useEffect(() => {
-    if (!initiallyAccepted && data.id) {
-      const acceptedQueries = JSON.parse(localStorage.getItem('acceptedQueries') || '{}');
-      if (acceptedQueries[data.id]) {
-        setIsAccepted(true);
-      }
+    console.log("DockableQueryModal initializing:", {
+      id: data.id,
+      status: data.status,
+      assignedToUser: data.assignedToUser,
+      initiallyAccepted
+    });
+
+    // Check if the query is accepted based on direct data properties
+    let queryIsAccepted = false;
+
+    // 1. Check if initiallyAccepted prop is true
+    if (initiallyAccepted) {
+      queryIsAccepted = true;
+      console.log(`Query ${data.id} marked as accepted via initiallyAccepted prop`);
     }
-  }, [data.id, initiallyAccepted]);
+    // 2. Check if the query is assigned to a user
+    else if (data.assignedToUser?.id) {
+      queryIsAccepted = true;
+      console.log(`Query ${data.id} is assigned to user ${data.assignedToUser.name || data.assignedToUser.id}`);
+    }
+
+    // Set the state based on direct data properties
+    setIsAccepted(queryIsAccepted);
+  }, [data.id, data.assignedToUser, initiallyAccepted]);
 
   // Fetch admin users for transfer
   useEffect(() => {
     const getAdminUsers = async () => {
-      const result = await fetchAdminUsers();
-      if (result && result.data) {
-        setAdminUsers(result.data);
+      try {
+        const result = await fetchAdminUsers();
+        if (result && result.data) {
+          setAdminUsers(result.data);
+        }
+      } catch (error) {
+        console.error("Error fetching admin users:", error);
       }
     };
     getAdminUsers();
@@ -67,73 +98,52 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
       return;
     }
     
-    // Check if query is already resolved or transferred before proceeding
+    // Check if query is already resolved or transferred
     if (data.status === "Resolved" || data.status === "Transferred") {
       blueToast(`Cannot accept a ${data.status.toLowerCase()} query`, {
-        description: "This query has already been processed and cannot be accepted again."
+        description: "This query has already been processed."
       }, 'error');
       return;
     }
     
+    // Check if already assigned to another user
+    if (data.assignedToUser?.id) {
+      blueToast(`Query already accepted`, {
+        description: `This query has already been accepted by ${data.assignedToUser.name || "another admin"}`
+      }, 'info');
+      setIsAccepted(true);
+      return;
+    }
+    
+    // Show loading state
     setIsAccepting(true);
+    
     try {
-      // Display a loading toast
-      const loadingToast = toast.loading("Accepting query...");
+      blueToast("Accepting query...", {}, 'default');
       
+      // Call the API to accept the query
       const success = await acceptQuery(data.id);
       
-      // Clear the loading toast
-      toast.dismiss(loadingToast);
-      
-      // Even if the backend returns an error, we'll still proceed to the chat view
-      // This is a temporary workaround until the backend is fixed
-      setIsAccepted(true);
-      
-      // Store the accepted state in localStorage
-      const acceptedQueries = JSON.parse(localStorage.getItem('acceptedQueries') || '{}');
-      acceptedQueries[data.id] = true;
-      localStorage.setItem('acceptedQueries', JSON.stringify(acceptedQueries));
-      
       if (success) {
-        blueToast(`Query from ${data.donor} accepted`, {
-          description: "You can now communicate with the donor"
-        }, 'success');
-      } else {
-        // Check if we have a detailed error message in sessionStorage
-        let errorMsg = "There was an issue accepting the query";
-        try {
-          const lastError = sessionStorage.getItem('lastQueryError');
-          if (lastError) {
-            errorMsg = lastError;
-            // Clear it after use
-            sessionStorage.removeItem('lastQueryError');
-          }
-        } catch (e) {
-          console.error("Error accessing sessionStorage:", e);
-        }
+        // Mark as accepted in the UI
+        setIsAccepted(true);
         
-        // Show a warning instead of an error to indicate we're proceeding anyway
-        blueToast(`Warning: ${errorMsg}`, {
-          description: "You can still proceed with the chat, but some features might be limited."
-        }, 'warning');
+        blueToast(`Query from ${data.donor} accepted`, {
+          description: "You can now chat with the donor"
+        }, 'success');
+        
+        // Force refresh to update the table
+        router.refresh();
+      } else {
+        blueToast("Failed to accept query", {
+          description: "Please try again or contact support"
+        }, 'error');
       }
     } catch (error) {
       console.error("Error accepting query:", error);
       blueToast("Server error", {
-        description: "There was an issue with the server, but you can still proceed with the chat",
-        action: {
-          label: 'Proceed',
-          onClick: () => {} // Action is just for visual, we already proceed
-        }
-      }, 'warning');
-      
-      // Still proceed to chat view despite the error
-      setIsAccepted(true);
-      
-      // Store the accepted state in localStorage even if there was an error
-      const acceptedQueries = JSON.parse(localStorage.getItem('acceptedQueries') || '{}');
-      acceptedQueries[data.id] = true;
-      localStorage.setItem('acceptedQueries', JSON.stringify(acceptedQueries));
+        description: "Could not connect to the server"
+      }, 'error');
     } finally {
       setIsAccepting(false);
     }
@@ -150,12 +160,6 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
       const success = await transferQueryToUser(data.id, parseInt(selectedAdmin));
       if (success) {
         toast.success(`Query transferred successfully`);
-        
-        // Remove from accepted queries in localStorage
-        const acceptedQueries = JSON.parse(localStorage.getItem('acceptedQueries') || '{}');
-        delete acceptedQueries[data.id];
-        localStorage.setItem('acceptedQueries', JSON.stringify(acceptedQueries));
-        
         router.refresh();
         setTransferDialogOpen(false);
       } else {
@@ -177,7 +181,6 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
     
     setIsResolving(true);
     try {
-      // Use the current user's ID if available, otherwise use a default value
       const userId = user?.id || 1;
       console.log(`Resolving query ${data.id} with user ID ${userId}`);
       
@@ -185,20 +188,8 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
       
       if (success) {
         toast.success(`Query resolved successfully`);
-        
-        // Remove from accepted queries in localStorage
-        const acceptedQueries = JSON.parse(localStorage.getItem('acceptedQueries') || '{}');
-        delete acceptedQueries[data.id];
-        localStorage.setItem('acceptedQueries', JSON.stringify(acceptedQueries));
-        
-        // Force a refresh of the page to update the table
         router.refresh();
-        
-        // Close the dialog
         setResolveDialogOpen(false);
-        
-        // Keep the modal open and don't navigate away
-        // The user can manually close it when they're done
       } else {
         toast.error("Failed to resolve query");
       }
@@ -210,7 +201,7 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
     }
   };
 
-  // If the query is not yet accepted, show the details view
+  // QUERY INFO VIEW - Show this if the query is not accepted
   if (!isAccepted) {
     return (
       <div className="flex flex-col h-full">
@@ -277,7 +268,7 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
     );
   }
 
-  // If the query is accepted, show the chat view with options in a hamburger menu
+  // CHAT VIEW - Show this if the query is accepted
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4 px-2">

@@ -24,6 +24,11 @@ export interface DonorQuery {
     name: string;
     email?: string;
   };
+  assignedToUser?: {
+    id: number;
+    name: string;
+    role: string;
+  };
   transferredTo?: string;
   transferNote?: string;
 }
@@ -375,31 +380,6 @@ export async function acceptQuery(id: number): Promise<boolean> {
       return false;
     }
 
-    // Check for query status locally first
-    let queryStatus;
-    try {
-      const localState = localStorage.getItem('queryStatuses');
-      if (localState) {
-        const statuses = JSON.parse(localState);
-        queryStatus = statuses[id];
-        
-        // If we know it's resolved or transferred, fail immediately
-        if (queryStatus === 'Resolved' || queryStatus === 'Transferred') {
-          const errorMsg = `Cannot accept query ${id} with status ${queryStatus}`;
-          console.error(errorMsg);
-          sessionStorage.setItem('lastQueryError', errorMsg);
-          return false;
-        }
-      }
-    } catch (e) {
-      console.log("Couldn't check local query status, proceeding with API call");
-    }
-    
-    // Log the exact URL and request details for debugging
-    const url = `${API_BASE_URL}/donor-queries/${id}/accept`;
-    console.log(`Making accept query request to: ${url}`);
-    console.log(`Request method: PATCH`);
-    
     // Check for token before making request
     const token = localStorage.getItem('auth_token');
     if (!token) {
@@ -409,9 +389,16 @@ export async function acceptQuery(id: number): Promise<boolean> {
       return false;
     }
     
+    // Log the exact URL and request details for debugging
+    const url = `${API_BASE_URL}/donor-queries/${id}/accept`;
+    console.log(`Making accept query request to: ${url}`);
+    console.log(`Request method: PATCH`);
+    
+    // Make the request to accept the query
     const response = await fetchWithAuth(url, {
       method: 'PATCH',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
@@ -459,8 +446,8 @@ export async function acceptQuery(id: number): Promise<boolean> {
           userErrorMsg = 'This query has already been resolved and cannot be accepted.';
         } else if (errorMessage.includes('cannot accept a transferred')) {
           userErrorMsg = 'This query has already been transferred and cannot be accepted.';
-        } else if (errorMessage.includes('already accepted')) {
-          userErrorMsg = 'This query has already been accepted.';
+        } else if (errorMessage.includes('already accepted') || errorMessage.includes('already assigned')) {
+          userErrorMsg = 'This query has already been accepted by another admin.';
         }
         
         sessionStorage.setItem('lastQueryError', userErrorMsg);
@@ -482,8 +469,33 @@ export async function acceptQuery(id: number): Promise<boolean> {
       return false;
     }
 
-    console.log('Query accepted successfully');
-    return true;
+    // Process successful response
+    try {
+      const data = await response.json();
+      console.log('Query accepted successfully:', data);
+      
+      // Update query statuses in localStorage
+      try {
+        const localState = localStorage.getItem('queryStatuses') || '{}';
+        const statuses = JSON.parse(localState);
+        
+        // Update with the new status and assignedToUser information
+        statuses[id] = {
+          status: "In Progress", // Once accepted, status changes to "In Progress"
+          assignedToUser: data?.data?.assignedToUser?.id || null
+        };
+        
+        localStorage.setItem('queryStatuses', JSON.stringify(statuses));
+        console.log('Updated queryStatuses in localStorage:', statuses);
+      } catch (e) {
+        console.error('Error updating local query status:', e);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error parsing success response:', error);
+      return true; // Still return true since the API call was successful
+    }
   } catch (error) {
     console.error('Error accepting query:', error);
     const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';

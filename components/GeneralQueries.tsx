@@ -40,11 +40,14 @@ export default function GeneralQueries() {
   useEffect(() => {
     if (data && data.length > 0) {
       try {
-        // Create a map of query ID to status
+        // Create a map of query ID to status and assignedToUser info
         const queryStatuses = data.reduce((acc, query) => {
-          acc[query.id] = query.status;
+          acc[query.id] = {
+            status: query.status,
+            assignedToUser: query.assignedToUser?.id || null
+          };
           return acc;
-        }, {} as Record<number, string>);
+        }, {} as Record<number, { status: string, assignedToUser: number | null }>);
         
         // Save to localStorage for use in validation
         localStorage.setItem('queryStatuses', JSON.stringify(queryStatuses));

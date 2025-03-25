@@ -41,13 +41,20 @@ export function DataTable<TData extends { id: string; donor: string; donorId: st
         id: Number(rowData.id)
       } as unknown as GeneralQueriesProps;
 
+      // Log the data for debugging
+      console.log('Opening QueryDetails with data:', {
+        id: queryData.id,
+        status: queryData.status,
+        assignedToUser: queryData.assignedToUser
+      });
+
       openModal(
         `query-${rowData.id}`,
         <QueryDetails data={queryData} />,
         {
           name: rowData.donor,
           image: `/avatars/${rowData.donorId}.jpg`,
-          status: "Available"
+          status: queryData.assignedToUser ? "Assigned" : "Available"
         }
       );
     }

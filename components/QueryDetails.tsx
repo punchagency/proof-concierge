@@ -1,14 +1,38 @@
 import { GeneralQueriesProps } from "./GeneralQueries";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatTab } from "./chat/ChatTab";
 import { toast } from "sonner";
 import { acceptQuery } from "@/lib/api/donor-queries";
 import { blueToast } from "@/lib/utils";
+import { QueryDebug } from "./QueryDebug";
 
-export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
+// Update the interface to include the assignedToUser field
+interface QueryDetailsProps {
+  data: GeneralQueriesProps & {
+    assignedToUser?: {
+      id: number;
+      name: string;
+      role: string;
+    };
+  };
+}
+
+export function QueryDetails({ data }: QueryDetailsProps) {
   const [activeTab, setActiveTab] = useState("details");
   const [isAccepting, setIsAccepting] = useState(false);
+  const [isAlreadyAccepted, setIsAlreadyAccepted] = useState(false);
+  const [apiResponse, setApiResponse] = useState<any>(null);
+
+  // Check if this query is already accepted/assigned
+  useEffect(() => {
+    // Query is considered accepted if it's assigned to a user
+    if (data.assignedToUser?.id) {
+      setIsAlreadyAccepted(true);
+      // Auto-switch to chat tab if already accepted
+      setActiveTab("chat");
+    }
+  }, [data.assignedToUser]);
 
   const handleAcceptQuery = async () => {
     if (!data.id) {
@@ -24,10 +48,32 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
       return;
     }
     
+    // Check if query is already assigned
+    if (data.assignedToUser?.id) {
+      blueToast(`Query already accepted`, {
+        description: "This query has already been accepted by " + (data.assignedToUser.name || "another admin")
+      }, 'info');
+      setActiveTab("chat");
+      return;
+    }
+    
     setIsAccepting(true);
     try {
       // Display a loading toast
       const loadingToast = toast.loading("Accepting query...");
+      
+      const response = await fetch(`/api/debug/accept-query/${data.id}`, {
+        method: 'POST',
+      }).catch(() => null);
+      
+      if (response) {
+        try {
+          const debugData = await response.json();
+          setApiResponse(debugData);
+        } catch (e) {
+          console.error("Failed to parse debug response", e);
+        }
+      }
       
       const success = await acceptQuery(data.id);
       
@@ -37,6 +83,7 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
       if (success) {
         // Switch to the chat tab when accepting the query
         setActiveTab("chat");
+        setIsAlreadyAccepted(true);
         blueToast(`Query from ${data.donor} accepted`, {
           description: "You can now communicate with the donor"
         }, 'success');
@@ -69,7 +116,7 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       <Tabs 
         value={activeTab} 
         onValueChange={setActiveTab}
@@ -85,6 +132,7 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
           <TabsTrigger
             value="chat"
             className="w-[100px] py-[15px] px-[16px] border-0 data-[state=active]:text-[#2E3740] text-[14px] font-semibold data-[state=inactive]:text-[#8D9CAD] data-[state=active]:shadow-none"
+            disabled={!isAlreadyAccepted && data.status !== "Resolved" && data.status !== "Transferred"}
           >
             Chat
           </TabsTrigger>
@@ -126,6 +174,18 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
               })}
             </p>
           </div>
+          {data.assignedToUser && (
+            <div>
+              <label className="text-[12px] text-gray-500">Assigned To</label>
+              <p className="font-semibold text-[14px]">{data.assignedToUser.name}</p>
+            </div>
+          )}
+          {data.status && (
+            <div>
+              <label className="text-[12px] text-gray-500">Status</label>
+              <p className="font-semibold text-[14px]">{data.status}</p>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex justify-between gap-4 mt-auto">
@@ -138,7 +198,7 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
             <button
               className="flex-1 py-2 px-4 bg-[#009CF9] text-white rounded-md font-medium hover:bg-[#0084d6] transition-colors"
               onClick={handleAcceptQuery}
-              disabled={isAccepting}
+              disabled={isAccepting || isAlreadyAccepted || data.status === "Resolved" || data.status === "Transferred"}
             >
               {isAccepting ? (
                 <span className="flex items-center justify-center">
@@ -146,7 +206,7 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
                   Accepting...
                 </span>
               ) : (
-                "Accept"
+                data.assignedToUser ? "Already Accepted" : "Accept"
               )}
             </button>
           </div>
@@ -162,6 +222,9 @@ export function QueryDetails({ data }: { data: GeneralQueriesProps }) {
           />
         </TabsContent>
       </Tabs>
+      
+      {/* Debug component - only visible in development */}
+      <QueryDebug data={data} apiResponse={apiResponse} />
     </div>
   );
 } 

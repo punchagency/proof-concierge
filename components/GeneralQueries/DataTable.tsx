@@ -10,8 +10,16 @@ import { useDockableModal } from "../providers/dockable-modal-provider";
 import { DockableQueryModal } from "./DockableQueryModal";
 import { GeneralQueriesProps as BaseGeneralQueriesProps } from "../GeneralQueries";
 
-// Define the transformed type with string id
-type TransformedGeneralQueriesProps = Omit<BaseGeneralQueriesProps, 'id'> & { id: string };
+// Define the transformed type with string id and explicitly include assignedToUser
+type TransformedGeneralQueriesProps = Omit<BaseGeneralQueriesProps, 'id'> & { 
+  id: string;
+  assignedToId?: number | null;
+  assignedToUser?: {
+    id: number;
+    name: string;
+    role: string;
+  };
+};
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -39,16 +47,24 @@ export function DataTable<TData, TValue>({
     if (onRowClick) {
       onRowClick(rowData);
     } else {
-      // Check if the query is already accepted (status is 'In Progress')
-      // The status in the API is defined as 'In Progress' with a space
+      // Get query data
       const queryData = rowData as unknown as TransformedGeneralQueriesProps;
-      const isAlreadyAccepted = queryData.status === "In Progress";
       
-      // Convert id back to number for the DockableQueryModal if needed
+      // Check if the query is already accepted by looking for assignedToId (convert to boolean)
+      const isAlreadyAccepted = Boolean(queryData.assignedToId);
+      
+      // Convert id back to number for the DockableQueryModal
       const originalQuery: BaseGeneralQueriesProps = {
         ...queryData,
         id: Number(queryData.id)
       };
+
+      console.log('Opening query modal with data:', {
+        id: originalQuery.id,
+        status: originalQuery.status,
+        assignedToUser: originalQuery.assignedToUser,
+        isAlreadyAccepted
+      });
 
       openModal(
         `query-${queryData.id}`,
@@ -59,7 +75,7 @@ export function DataTable<TData, TValue>({
         {
           name: queryData.donor,
           image: `/avatars/${queryData.donorId}.jpg`,
-          status: "Available",
+          status: originalQuery.assignedToUser ? "Assigned" : "Available",
         }
       );
     }
