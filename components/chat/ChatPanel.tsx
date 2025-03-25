@@ -19,6 +19,7 @@ import { CallModal } from "../communication/CallModal";
 import {
   acceptCallRequestById,
   getCallSessionById,
+  startQueryCall,
 } from "@/lib/api/communication";
 import { CallMode } from "@/types/communication";
 import { cn, blueToast } from "@/lib/utils";
@@ -167,12 +168,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [callState] = useAtom(callStateAtom);
   const [, startCall] = useAtom(startCallAtom);
-  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
-  const [currentCallData, setCurrentCallData] = useState<{
-    roomUrl: string;
-    roomToken: string;
-    mode: "audio" | "video";
-  } | null>(null);
 
   // Define fetchMessages with useCallback to avoid dependency issues
   const fetchMessages = useCallback(
@@ -186,20 +181,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
 
         // Get all messages using the new endpoint
         const messagesData = await getQueryMessages(donorQueryId);
-        console.log("Raw messages data from API:", messagesData);
-
-        // Check for call-related messages specifically
-        const callMessages = messagesData.filter(
-          (msg) =>
-            msg.messageType === "CALL_STARTED" ||
-            msg.messageType === "SYSTEM" ||
-            msg.callSessionId ||
-            msg.callRequestId
-        );
-
-        if (callMessages.length > 0) {
-          console.log("Call-related messages found:", callMessages);
-        }
 
         // Process the messages
         const formattedMessages: ExtendedChatMessage[] = [];
@@ -264,7 +245,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
 
-        console.log("Formatted messages:", sortedMessages);
         setMessages(sortedMessages);
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -333,68 +313,50 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
     }
 
     setIsStartingVideoCall(true);
+
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/communication/call/${donorQueryId}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mode: "VIDEO",
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        
-        // Handle specific error for active calls
-        if (errorData?.statusCode === 500 && errorData?.message?.includes("already an active call")) {
-          blueToast("There is already an active call for this query. Please end the existing call before starting a new one.", {}, 'error');
-          return;
-        }
-        
-        throw new Error(`Failed to start video call: ${response.status}`);
+      // Initiate a video call with the donor
+      const response = await startQueryCall(donorQueryId, user.id.toString(), CallMode.VIDEO);
+      
+      if (!response) {
+        throw new Error("No response received from server");
+      }
+      
+      // API returns different response formats - handle all possibilities
+      const callSession = response.data?.callSession;
+      const roomName = callSession?.roomName;
+      const roomUrl = response.data?.roomUrl;
+      const roomToken = response.data?.adminToken || callSession?.adminToken;
+      
+      if (!roomName && !roomUrl) {
+        throw new Error("Missing room information in response");
+      }
+      
+      // Construct the roomUrl if we only have roomName
+      const finalRoomUrl = roomUrl || (roomName ? constructDailyUrl(roomName) : "");
+      
+      if (!finalRoomUrl) {
+        throw new Error("Could not determine room URL");
+      }
+      
+      if (!roomToken) {
+        throw new Error("Missing room token in response");
       }
 
-      const callData = await response.json();
-
-      // Validate call data
-      if (!callData.data?.roomUrl || !callData.data?.adminToken) {
-        throw new Error("Invalid call data received from server");
-      }
-
-      blueToast("Video call started successfully", {}, 'success');
-
-      const roomUrl = callData.data.roomUrl;
-      const roomToken = callData.data.adminToken;
-      // Extract room name from URL safely
-      const roomName = roomUrl.includes("/")
-        ? roomUrl.split("/").pop() || ""
-        : "";
-
-      // Update internal call data state
-      setCurrentCallData({
-        roomUrl,
-        roomToken,
-        mode: "video",
-      });
-
-      // Initialize the call using Jotai
+      // Get room name from URL if not provided directly
+      const finalRoomName = roomName || finalRoomUrl.split('/').pop() || "";
+      
+      // Initialize the call using Jotai - this will trigger isInCall in DockableQueryModal
       startCall({
         queryId: donorQueryId,
         userId: user.id,
         mode: CallMode.VIDEO,
-        roomUrl,
+        roomUrl: finalRoomUrl,
         roomToken,
-        roomName,
+        roomName: finalRoomName
       });
 
-      setIsCallModalOpen(true);
-      console.log("Call modal opened with current state:", callState);
+      // Refresh messages to show call started
       await fetchMessages(false);
     } catch (error) {
       console.error("Error starting video call:", error);
@@ -416,68 +378,50 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
     }
 
     setIsStartingAudioCall(true);
+
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/communication/call/${donorQueryId}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mode: "AUDIO",
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        
-        // Handle specific error for active calls
-        if (errorData?.statusCode === 500 && errorData?.message?.includes("already an active call")) {
-          blueToast("There is already an active call for this query. Please end the existing call before starting a new one.", {}, 'error');
-          return;
-        }
-        
-        throw new Error(`Failed to start audio call: ${response.status}`);
+      // Initiate an audio call with the donor
+      const response = await startQueryCall(donorQueryId, user.id.toString(), CallMode.AUDIO);
+      
+      if (!response) {
+        throw new Error("No response received from server");
+      }
+      
+      // API returns different response formats - handle all possibilities
+      const callSession = response.data?.callSession;
+      const roomName = callSession?.roomName;
+      const roomUrl = response.data?.roomUrl;
+      const roomToken = response.data?.adminToken || callSession?.adminToken;
+      
+      if (!roomName && !roomUrl) {
+        throw new Error("Missing room information in response");
+      }
+      
+      // Construct the roomUrl if we only have roomName
+      const finalRoomUrl = roomUrl || (roomName ? constructDailyUrl(roomName) : "");
+      
+      if (!finalRoomUrl) {
+        throw new Error("Could not determine room URL");
+      }
+      
+      if (!roomToken) {
+        throw new Error("Missing room token in response");
       }
 
-      const callData = await response.json();
-
-      // Validate call data
-      if (!callData.data?.roomUrl || !callData.data?.adminToken) {
-        throw new Error("Invalid call data received from server");
-      }
-
-      blueToast("Audio call started successfully", {}, 'success');
-
-      const roomUrl = callData.data.roomUrl;
-      const roomToken = callData.data.adminToken;
-      // Extract room name from URL safely
-      const roomName = roomUrl.includes("/")
-        ? roomUrl.split("/").pop() || ""
-        : "";
-
-      // Update internal call data state
-      setCurrentCallData({
-        roomUrl,
-        roomToken,
-        mode: "audio",
-      });
-
-      // Initialize the call using Jotai
+      // Get room name from URL if not provided directly
+      const finalRoomName = roomName || finalRoomUrl.split('/').pop() || "";
+      
+      // Initialize the call using Jotai - this will trigger isInCall in DockableQueryModal
       startCall({
         queryId: donorQueryId,
         userId: user.id,
         mode: CallMode.AUDIO,
-        roomUrl,
+        roomUrl: finalRoomUrl,
         roomToken,
-        roomName,
+        roomName: finalRoomName
       });
 
-      setIsCallModalOpen(true);
-      console.log("Call modal opened with current state:", callState);
+      // Refresh messages to show call started
       await fetchMessages(false);
     } catch (error) {
       console.error("Error starting audio call:", error);
@@ -1006,16 +950,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
     try {
       setIsJoiningCall(true);
 
-      // Enhanced debug logging
-      console.log("Call join data:", {
-        messageType: message.messageType,
-        callMode: message.callMode,
-        callSessionData: message.callSession,
-        roomName: message.roomName,
-        callRequestId: message.callRequestId,
-        callSessionId: message.callSessionId,
-      });
-
       // Check if we have a complete callSession object
       if (message.callSession) {
         // Check if roomUrl is missing but we have roomName
@@ -1028,7 +962,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             return;
           }
           message.callSession.roomUrl = constructedUrl;
-          console.log("Constructed Room URL:", constructedUrl);
         }
 
         // Verify we have all required data
@@ -1043,12 +976,9 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             const urlObj = new URL(roomUrl);
             const pathParts = urlObj.pathname.split('/').filter(Boolean);
             roomName = pathParts.length > 0 ? pathParts[pathParts.length - 1] : "";
-            console.log("Extracted room name from URL:", roomName);
           } catch (urlError) {
-            console.error("Error parsing room URL:", urlError);
             // Fallback to using the existing room name if available
             roomName = message.callSession.roomName || "";
-            console.log("Using fallback room name:", roomName);
           }
 
           if (!roomName) {
@@ -1067,32 +997,19 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
               roomToken,
               roomName,
             });
-
-            // Update internal call data state
-            setCurrentCallData({
-              roomUrl,
-              roomToken,
-              mode: callMode === "video" ? "video" : "audio",
-            });
-
-            setIsCallModalOpen(true);
           } catch (callError) {
             console.error("Error starting call:", callError);
             blueToast("Failed to start the call. Please try again.", {}, 'error');
-            setIsJoiningCall(false);
           }
         } else {
           blueToast("Call information is incomplete", {}, 'error');
-          setIsJoiningCall(false);
         }
       } else if (message.callSessionId) {
         // If we have a callSessionId but no callSession object,
         // try to fetch the call session details from the API
         try {
           toast.loading("Retrieving call information...");
-          const callSessionData = await getCallSessionById(
-            message.callSessionId
-          );
+          const callSessionData = await getCallSessionById(message.callSessionId);
 
           if (callSessionData && callSessionData.data) {
             const callSession = callSessionData.data;
@@ -1108,25 +1025,12 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
                 startCall({
                   queryId: donorQueryId,
                   userId: user?.id || 0,
-                  mode:
-                    message.callMode?.toLowerCase() === "video"
-                      ? CallMode.VIDEO
-                      : CallMode.AUDIO,
+                  mode: message.callMode?.toLowerCase() === "video" ? CallMode.VIDEO : CallMode.AUDIO,
                   roomUrl,
                   roomToken,
                   roomName,
                 });
-
-                // Update internal call data state
-                setCurrentCallData({
-                  roomUrl,
-                  roomToken,
-                  mode: (message.callMode?.toLowerCase() || "video") as
-                    | "audio"
-                    | "video",
-                });
-
-                setIsCallModalOpen(true);
+                
                 toast.dismiss();
               } else {
                 blueToast("Call information is incomplete. Missing admin token.", {}, 'error');
@@ -1135,18 +1039,18 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
               blueToast("Failed to retrieve complete call information", {}, 'error');
             }
           } else {
-            blueToast("Failed to retrieve call information", {}, 'error');
+            blueToast("Failed to retrieve call session data", {}, 'error');
           }
         } catch (error) {
-          console.error("Error fetching call session:", error);
+          console.error("Error retrieving call session:", error);
           blueToast("Failed to retrieve call information", {}, 'error');
         }
       } else {
-        blueToast("Call information is missing", {}, 'error');
+        blueToast("No call information available", {}, 'error');
       }
     } catch (error) {
-      console.error("Error handling call:", error);
-      blueToast("Failed to handle call", {}, 'error');
+      console.error("Error joining call:", error);
+      blueToast("An unexpected error occurred", {}, 'error');
     } finally {
       setIsJoiningCall(false);
     }
@@ -1192,15 +1096,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
             roomToken,
             roomName,
           });
-
-          // Update internal call data state
-          setCurrentCallData({
-            roomUrl,
-            roomToken,
-            mode: callMode === "VIDEO" ? "video" : "audio",
-          });
-
-          setIsCallModalOpen(true);
         } else {
           blueToast("Call information is incomplete", {}, 'error');
         }
@@ -1333,23 +1228,6 @@ export function ChatPanel({ donorQueryId }: ChatPanelProps) {
           </Button>
         </div>
       </div>
-
-      {/* CallModal component */}
-      <CallModal
-        isOpen={isCallModalOpen}
-        onClose={() => {
-          setIsCallModalOpen(false);
-          setCurrentCallData(null);
-        }}
-        position={0}
-        totalModals={1}
-        profileData={{
-          name: user?.name || "Admin",
-          image: user?.avatar || "",
-          status:
-            currentCallData?.mode === "video" ? "Video Call" : "Audio Call",
-        }}
-      />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { GeneralQueriesProps } from '../GeneralQueries';
 import { toast } from 'sonner';
 import { acceptQuery, transferQueryToUser, resolveQuery, fetchAdminUsers } from '@/lib/api/donor-queries';
 import { useRouter } from 'next/navigation';
-import { UserPlus, CheckCircle, MoreVertical } from 'lucide-react';
+import { UserPlus, CheckCircle, MoreVertical, PhoneOff } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ChatPanel } from '../chat/ChatPanel';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
@@ -13,6 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useAuth } from '@/lib/auth/auth-context';
 import { blueToast } from '@/lib/utils';
+import { useAtom } from 'jotai';
+import { callStateAtom, endCallAtom } from '@/lib/atoms/callState';
+import { DailyCall } from '../communication/DailyCall';
+import { CallUI } from '../communication/CallUI';
 
 // Interface for admin users
 interface AdminUser {
@@ -50,27 +54,33 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
 
+  // Call states
+  const [callState] = useAtom(callStateAtom);
+  const [, endCall] = useAtom(endCallAtom);
+  const [isInCall, setIsInCall] = useState(false);
+
+  // Monitor call state changes
+  useEffect(() => {
+    const shouldBeInCall = callState.isActive && 
+      callState.queryId === data.id && 
+      Boolean(callState.roomUrl) && 
+      Boolean(callState.roomToken);
+    
+    setIsInCall(shouldBeInCall);
+  }, [callState, data.id]);
+
   // Main useEffect - determine if the query is accepted
   useEffect(() => {
-    console.log("DockableQueryModal initializing:", {
-      id: data.id,
-      status: data.status,
-      assignedToUser: data.assignedToUser,
-      initiallyAccepted
-    });
-
     // Check if the query is accepted based on direct data properties
     let queryIsAccepted = false;
 
     // 1. Check if initiallyAccepted prop is true
     if (initiallyAccepted) {
       queryIsAccepted = true;
-      console.log(`Query ${data.id} marked as accepted via initiallyAccepted prop`);
     }
     // 2. Check if the query is assigned to a user
     else if (data.assignedToUser?.id) {
       queryIsAccepted = true;
-      console.log(`Query ${data.id} is assigned to user ${data.assignedToUser.name || data.assignedToUser.id}`);
     }
 
     // Set the state based on direct data properties
@@ -201,6 +211,13 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
     }
   };
 
+  const handleEndCall = () => {
+    if (callState.isActive) {
+      endCall();
+      blueToast("Call ended", {}, 'default');
+    }
+  };
+
   // QUERY INFO VIEW - Show this if the query is not accepted
   if (!isAccepted) {
     return (
@@ -268,44 +285,60 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
     );
   }
 
-  // CHAT VIEW - Show this if the query is accepted
+  // CHAT VIEW WITH POTENTIAL CALL - Show this if the query is accepted
   return (
     <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center mb-4 px-2">
+      {/* Top header section with controls */}
+      <div className="flex justify-between items-center mb-2 px-2">
         <div>
           <p className="text-sm text-gray-500">
             {data.test} - Donor ID: {data.donorId}
           </p>
         </div>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <MoreVertical className="h-4 w-4" />
+        <div className="flex items-center gap-1">
+          {isInCall && (
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              className="h-7 flex items-center gap-1" 
+              onClick={handleEndCall}
+            >
+              <PhoneOff className="h-3.5 w-3.5" />
+              <span className="text-xs">End Call</span>
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
-              <DialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  <span>Transfer</span>
-                </DropdownMenuItem>
-              </DialogTrigger>
-            </Dialog>
-            
-            <Dialog open={resolveDialogOpen} onOpenChange={setResolveDialogOpen}>
-              <DialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  <span>Resolve</span>
-                </DropdownMenuItem>
-              </DialogTrigger>
-            </Dialog>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          )}
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 w-7 p-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
+                <DialogTrigger asChild>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    <span>Transfer</span>
+                  </DropdownMenuItem>
+                </DialogTrigger>
+              </Dialog>
+              
+              <Dialog open={resolveDialogOpen} onOpenChange={setResolveDialogOpen}>
+                <DialogTrigger asChild>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <span>Resolve</span>
+                  </DropdownMenuItem>
+                </DialogTrigger>
+              </Dialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       
+      {/* Dialog for transferring query */}
       <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -337,6 +370,7 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
         </DialogContent>
       </Dialog>
 
+      {/* Dialog for resolving query */}
       <Dialog open={resolveDialogOpen} onOpenChange={setResolveDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -356,8 +390,21 @@ export function DockableQueryModal({ data, initiallyAccepted = false }: Dockable
         </DialogContent>
       </Dialog>
       
-      <div className="flex-1 overflow-hidden">
-        <ChatPanel donorQueryId={data.id || parseInt(data.id.toString())} />
+      {/* Main content area - either call UI or chat panel */}
+      <div className="flex-1 overflow-hidden relative">
+        {isInCall ? (
+          <div className="absolute inset-0 z-10">
+            <DailyCall
+              roomUrl={callState.roomUrl || ''}
+              roomToken={callState.roomToken || ''}
+              mode={callState.mode === 'video' ? 'video' : 'audio'}
+            >
+              <CallUI onLeave={handleEndCall} />
+            </DailyCall>
+          </div>
+        ) : (
+          <ChatPanel donorQueryId={data.id || parseInt(data.id.toString())} />
+        )}
       </div>
     </div>
   );

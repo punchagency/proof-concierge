@@ -25,11 +25,7 @@ function DailyInitializer() {
     if (daily) {
       try {
         // Set username for the local participant
-        console.log("Setting Daily username to:", user?.name || 'Admin');
         daily.setUserName(user?.name || 'Admin');
-        
-        // Explicitly join the meeting with appropriate options
-        console.log("Explicitly joining the meeting with video off:", isVideoOff);
         
         // Use a timeout to ensure previous operations are complete
         const joinTimeout = setTimeout(() => {
@@ -37,7 +33,7 @@ function DailyInitializer() {
             startVideoOff: isVideoOff, // Prevent camera from being accessed if video is off
             startAudioOff: isMuted,    // Prevent mic from being accessed if audio is muted
           }).then(() => {
-            console.log("Successfully joined the call through explicit join()");
+            // Successfully joined
           }).catch(err => {
             console.error("Error joining the call:", err);
           });
@@ -51,14 +47,6 @@ function DailyInitializer() {
   }, [daily, user, isVideoOff, isMuted]);
 
   // Add additional logging for various meeting state changes
-  useDailyEvent('joining-meeting', () => {
-    console.log("Joining meeting process started...");
-  });
-  
-  useDailyEvent('joined-meeting', () => {
-    console.log("Successfully joined the meeting!");
-  });
-  
   useDailyEvent('error', (event) => {
     console.error("Daily error event:", event);
   });
@@ -78,21 +66,32 @@ interface DailyCallProps {
 const validateRoomUrl = (url: string): string => {
   if (!url) return "";
   
+  // Trim the URL to remove any whitespace
+  const trimmedUrl = url.trim();
+  
   try {
     // Ensure URL is properly formatted
-    const parsedUrl = new URL(url);
+    const parsedUrl = new URL(trimmedUrl);
     return parsedUrl.toString();
   } catch (error) {
-    console.error("Invalid room URL format:", error);
-    
     // Try to fix common issues
-    if (!url.startsWith('http')) {
+    if (!trimmedUrl.startsWith('http')) {
       try {
-        const withProtocol = `https://${url}`;
-        new URL(withProtocol);
+        // Add https protocol
+        const withProtocol = `https://${trimmedUrl}`;
+        new URL(withProtocol); // Validate it's a proper URL now
         return withProtocol;
       } catch (e) {
-        console.error("Failed to fix room URL:", e);
+        // If it's not a valid URL even with protocol, try to construct a valid daily.co URL
+        try {
+          // Assume it's a room name and construct prooftest.daily.co URL
+          const asRoomName = `https://prooftest.daily.co/${trimmedUrl}`;
+          new URL(asRoomName); // Validate it's a proper URL
+          return asRoomName;
+        } catch (e2) {
+          console.error("Failed to create a valid URL from:", trimmedUrl);
+          return "";
+        }
       }
     }
     
@@ -116,7 +115,17 @@ export function DailyCall({ roomUrl, roomToken, mode, children }: DailyCallProps
         setValidatedUrl(validUrl);
         setInitError(null);
       } else {
-        setInitError("Invalid room URL format");
+        // Try to construct a URL from the room name
+        try {
+          const parts = roomUrl.split('/');
+          const lastPart = parts[parts.length - 1];
+          const fallbackUrl = `https://prooftest.daily.co/${lastPart}`;
+          new URL(fallbackUrl); // Check if valid
+          setValidatedUrl(fallbackUrl);
+          setInitError(null);
+        } catch (e) {
+          setInitError(`Invalid room URL format: ${roomUrl}`);
+        }
       }
     } else {
       setInitError("Missing room URL");
@@ -125,21 +134,12 @@ export function DailyCall({ roomUrl, roomToken, mode, children }: DailyCallProps
   
   // Add debugging and error handling
   useEffect(() => {
-    console.log("DailyCall initializing with:", { 
-      validatedUrl, 
-      originalUrl: roomUrl,
-      roomToken: roomToken?.substring(0, 15) + "...", 
-      mode,
-      callStateActive: callState.isActive
-    });
-    
     // Validate required properties
     if (!validatedUrl) {
       return; // Error already set in the URL validation effect
     }
     
     if (!roomToken) {
-      console.error("DailyCall: missing roomToken");
       setInitError("Missing room token");
       return;
     }
@@ -156,7 +156,6 @@ export function DailyCall({ roomUrl, roomToken, mode, children }: DailyCallProps
     
     // Make sure the call state is marked as active
     if (!callState.isActive && validatedUrl && roomToken) {
-      console.log("Setting call state to active");
       setCallState(prev => ({
         ...prev,
         isActive: true
